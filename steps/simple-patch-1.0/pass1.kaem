@@ -7,7 +7,13 @@
 set -ex
 
 # Build & install
-tcc_cc -a ${ARCH} -o /tmp/simple-patch.sl /src/stdlib.c src/simple-patch.c
+# arm64 needs -D TCC_TARGET_ARM64=1 so sys_syscall.h selects the aarch64 syscall
+# numbers (-a arm64 only switches code generation to 64-bit).
+if match ${ARCH} arm64; then
+    tcc_cc -a arm64 -D TCC_TARGET_ARM64=1 -o /tmp/simple-patch.sl /src/stdlib.c src/simple-patch.c
+else
+    tcc_cc -a ${ARCH} -o /tmp/simple-patch.sl /src/stdlib.c src/simple-patch.c
+fi
 stack_c -i /${ARCH}/stack_c_intro.M1 /tmp/simple-patch.sl -o /tmp/simple-patch.M1
 blood-elf -a ${ARCH} --file /tmp/simple-patch.M1 --little-endian --output /tmp/simple-patch.blood_elf
 M1 /tmp/simple-patch.M1 -o /tmp/simple-patch.macro
