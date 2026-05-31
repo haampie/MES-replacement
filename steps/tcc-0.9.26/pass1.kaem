@@ -155,7 +155,23 @@ if match ${ARCH} arm64; then
     # `f` with VT_BTYPE at entry so the comparisons see only the base type.
     simple-patch arm64-gen.c \
         ../../simple-patches/arm64-cvt-ftof-mask.before ../../simple-patches/arm64-cvt-ftof-mask.after
+<<<<<<< HEAD
 >>>>>>> 8da539f (tcc-arm64: mask qualifiers in gen_cvt_ftof type compares)
+||||||| parent of 391ff1f (tcc-0.9.26 pass1: wire arm64-long-suffix-64bit simple-patch into pass1.kaem)
+=======
+
+    # parse_number()'s integer-suffix handling only sets must_64bit for a
+    # single 'L' on x86_64.  On aarch64 sizeof(long)==8 too, so without
+    # this any 'NUL'-suffixed constant that fits in 32 bits (e.g.
+    # `-4096UL` -> 0xfffffffffffff000) is parsed as 32-bit unsigned int;
+    # assignment to a 64-bit variable zero-extends to 0x00000000fffff000.
+    # This bites musl's __syscall_ret: `r > -4096UL` is then false for
+    # valid 64-bit pointer returns from mmap, so every mmap-using
+    # allocation reports MAP_FAILED and tcc-on-musl aborts with
+    # "memory full" on its first large allocation.
+    simple-patch tccpp.c \
+        ../../simple-patches/arm64-long-suffix-64bit.before ../../simple-patches/arm64-long-suffix-64bit.after
+>>>>>>> 391ff1f (tcc-0.9.26 pass1: wire arm64-long-suffix-64bit simple-patch into pass1.kaem)
 fi
 
 
