@@ -125,8 +125,25 @@ if match ${ARCH} arm64; then
         ../../simple-patches/arm64-asm-defs.before ../../simple-patches/arm64-asm-defs.after
     simple-patch libtcc.c \
         ../../simple-patches/arm64-asm-include.before ../../simple-patches/arm64-asm-include.after
+<<<<<<< HEAD
     #simple-patch tccgen.c \
     #    ../../simple-patches/arm64-va-builtin-loop.before ../../simple-patches/arm64-va-builtin-loop.after
+||||||| parent of 14f8a13 (tcc-arm64: handle VT_CONST|VT_LVAL load/store)
+    simple-patch tccgen.c \
+        ../../simple-patches/arm64-va-builtin-loop.before ../../simple-patches/arm64-va-builtin-loop.after
+=======
+    simple-patch tccgen.c \
+        ../../simple-patches/arm64-va-builtin-loop.before ../../simple-patches/arm64-va-builtin-loop.after
+    # arm64-gen.c load()/store() lack a case for VT_CONST|VT_LVAL with no
+    # VT_SYM (storing/loading through an integer-constant cast to pointer),
+    # so any such expression — even constant-folded ones — falls through to
+    # printf+assert(0) and crashes the compiler.  Add the missing branch:
+    # materialise the absolute address into x30 and reuse arm64_{ldr,str}{x,v}.
+    simple-patch arm64-gen.c \
+        ../../simple-patches/arm64-load-const-lval.before ../../simple-patches/arm64-load-const-lval.after
+    simple-patch arm64-gen.c \
+        ../../simple-patches/arm64-store-const-lval.before ../../simple-patches/arm64-store-const-lval.after
+>>>>>>> 14f8a13 (tcc-arm64: handle VT_CONST|VT_LVAL load/store)
 fi
 
 
