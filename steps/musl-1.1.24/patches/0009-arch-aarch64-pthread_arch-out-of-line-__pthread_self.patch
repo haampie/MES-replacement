@@ -1,0 +1,62 @@
+From 56571b21a291e4f5f9dc5d07d55f73af52d14e74 Mon Sep 17 00:00:00 2001
+From: Harmen Stoppels <harmen@stoppels.ch>
+Date: Sun, 31 May 2026 09:24:54 +0200
+Subject: [PATCH 09/21] arch/aarch64/pthread_arch: out-of-line __pthread_self
+ via mrs tpidr_el0
+
+tcc 0.9.26 has no inline-asm operand support, so the upstream
+"mrs %0, tpidr_el0" form cannot bind the result into a C variable.
+Move the mrs into __aarch64_read_tp() in syscall_raw.c as a raw .int
+word; tccs aarch64 prologue/epilogue do not touch x0 so the register
+flows out as the function return.  The header now just subtracts
+sizeof(struct pthread) from that pointer.
+---
+ arch/aarch64/pthread_arch.h        | 13 ++++++++++---
+ src/internal/aarch64/syscall_raw.c | 11 +++++++++++
+ 2 files changed, 21 insertions(+), 3 deletions(-)
+
+diff --git a/arch/aarch64/pthread_arch.h b/arch/aarch64/pthread_arch.h
+index e64b126..1adca0d 100644
+--- a/arch/aarch64/pthread_arch.h
++++ b/arch/aarch64/pthread_arch.h
+@@ -1,8 +1,15 @@
++/* tcc 0.9.26 has no AArch64 assembler.  The thread-pointer read
++ *   __asm__("mrs %0,tpidr_el0" : "=r"(self))
++ * cannot be expressed (no inline-asm operands), so the raw mrs lives in
++ * src/internal/aarch64/syscall_raw.c::__aarch64_read_tp() and we call it
++ * here.  Single-threaded use means tpidr_el0 is only set once by
++ * __init_tp(), so the indirection cost is irrelevant.
++ */
++void *__aarch64_read_tp(void);
++
+ static inline struct pthread *__pthread_self()
+ {
+-	char *self;
+-	__asm__ ("mrs %0,tpidr_el0" : "=r"(self));
+-	return (void*)(self - sizeof(struct pthread));
++	return (struct pthread *)((char *)__aarch64_read_tp() - sizeof(struct pthread));
+ }
+ 
+ #define TLS_ABOVE_TP
+diff --git a/src/internal/aarch64/syscall_raw.c b/src/internal/aarch64/syscall_raw.c
+index 368a0f3..bec7809 100644
+--- a/src/internal/aarch64/syscall_raw.c
++++ b/src/internal/aarch64/syscall_raw.c
+@@ -81,3 +81,14 @@ long __syscall6(long n, long a, long b, long c, long d, long e, long f)
+ 	__asm__(".int 0xaa0603e5"); /* mov x5, x6 */
+ 	__asm__(".int 0xd4000001"); /* svc #0     */
+ }
++
++/* Thread-pointer read used by __pthread_self.  Out-of-line because tcc
++ * cannot bind an inline-asm result to a C variable.  Encoding:
++ *   mrs x0, tpidr_el0 = 0xd53bd040
++ * tccs prologue/epilogue do not touch x0, so the register value flows
++ * out as the return value.
++ */
++void *__aarch64_read_tp(void)
++{
++	__asm__(".int 0xd53bd040"); /* mrs x0, tpidr_el0 */
++}
+-- 
+2.43.0
+

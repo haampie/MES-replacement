@@ -1,0 +1,56 @@
+From 8b59c68936cef71e8775dd46bde1ea32ee9067a9 Mon Sep 17 00:00:00 2001
+From: Harmen Stoppels <harmen@stoppels.ch>
+Date: Sun, 31 May 2026 10:30:45 +0200
+Subject: [PATCH 16/21] aarch64 va_list: switch to array form for forwarded
+ va_list
+
+---
+ arch/aarch64/bits/alltypes.h.in | 10 ++++++++--
+ include/stdarg.h                |  7 +++++--
+ 2 files changed, 13 insertions(+), 4 deletions(-)
+
+diff --git a/arch/aarch64/bits/alltypes.h.in b/arch/aarch64/bits/alltypes.h.in
+index 864843d..613c50d 100644
+--- a/arch/aarch64/bits/alltypes.h.in
++++ b/arch/aarch64/bits/alltypes.h.in
+@@ -2,8 +2,14 @@
+ #define _Int64 long
+ #define _Reg long
+ 
+-TYPEDEF struct __va_list_struct { void *__stack; void *__gr_top; void *__vr_top; int __gr_offs; int __vr_offs; } va_list;
+-TYPEDEF struct __va_list_struct __isoc_va_list;
++TYPEDEF struct __va_list_struct {
++    void *__stack;
++    void *__gr_top;
++    void *__vr_top;
++    int __gr_offs;
++    int __vr_offs;
++} va_list[1];
++TYPEDEF struct __va_list_struct __isoc_va_list[1];
+ 
+ #ifndef __cplusplus
+ TYPEDEF unsigned wchar_t;
+diff --git a/include/stdarg.h b/include/stdarg.h
+index d1e7aa8..9f9cc79 100644
+--- a/include/stdarg.h
++++ b/include/stdarg.h
+@@ -10,11 +10,14 @@ extern "C" {
+ #include <bits/alltypes.h>
+ 
+ /* tcc 0.9.26 aarch64: __builtin_va_* are not implemented; libtcc1
+-   exports __va_start/__va_arg taking the AAPCS64 va_list struct. */
++   exports __va_start/__va_arg taking the AAPCS64 va_list.  va_list is
++   defined as a 1-element array (matching upstream musl/AAPCS64) so a
++   va_list parameter decays to a pointer and forwards correctly.
++   va_copy must therefore dereference both sides. */
+ #define va_start(ap, last) __va_start(ap, last)
+ #define va_arg(ap, type)   __va_arg(ap, type)
+ #define va_end(ap)
+-#define va_copy(d, s)      ((d) = (s))
++#define va_copy(d, s)      (*(d) = *(s))
+ 
+ #ifdef __cplusplus
+ }
+-- 
+2.43.0
+

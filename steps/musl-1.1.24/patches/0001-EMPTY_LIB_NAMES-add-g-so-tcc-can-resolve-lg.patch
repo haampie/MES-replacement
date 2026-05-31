@@ -1,0 +1,27 @@
+From ffdfb8c2c24822929167849c3b65774a4b8ba24f Mon Sep 17 00:00:00 2001
+From: Harmen Stoppels <harmen@stoppels.ch>
+Date: Sun, 31 May 2026 09:15:22 +0200
+Subject: [PATCH 01/21] EMPTY_LIB_NAMES: add g so tcc can resolve -lg
+
+tcc passes -lg at link time; musl does not normally produce libg.a.
+Mirrors the add-libg phase of musl-boot0 in commencement.scm:1074-1078.
+---
+ Makefile | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/Makefile b/Makefile
+index b46f8ca..807dca4 100644
+--- a/Makefile
++++ b/Makefile
+@@ -60,7 +60,7 @@ GENERIC_INCLUDES = $(wildcard $(srcdir)/arch/generic/bits/*.h)
+ INCLUDES = $(wildcard $(srcdir)/include/*.h $(srcdir)/include/*/*.h)
+ ALL_INCLUDES = $(sort $(INCLUDES:$(srcdir)/%=%) $(GENH:obj/%=%) $(ARCH_INCLUDES:$(srcdir)/arch/$(ARCH)/%=include/%) $(GENERIC_INCLUDES:$(srcdir)/arch/generic/%=include/%))
+ 
+-EMPTY_LIB_NAMES = m rt pthread crypt util xnet resolv dl
++EMPTY_LIB_NAMES = g m rt pthread crypt util xnet resolv dl
+ EMPTY_LIBS = $(EMPTY_LIB_NAMES:%=lib/lib%.a)
+ CRT_LIBS = $(addprefix lib/,$(notdir $(CRT_OBJS)))
+ STATIC_LIBS = lib/libc.a
+-- 
+2.43.0
+

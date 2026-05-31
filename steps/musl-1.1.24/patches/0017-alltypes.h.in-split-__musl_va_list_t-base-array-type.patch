@@ -1,0 +1,41 @@
+From fc2fcc365634e1123bf12a479217ac4834a59a9c Mon Sep 17 00:00:00 2001
+From: Harmen Stoppels <harmen@stoppels.ch>
+Date: Sun, 31 May 2026 10:31:21 +0200
+Subject: [PATCH 17/21] alltypes.h.in: split __musl_va_list_t base + array
+ typedefs
+
+---
+ arch/aarch64/bits/alltypes.h.in | 17 +++++++++--------
+ 1 file changed, 9 insertions(+), 8 deletions(-)
+
+diff --git a/arch/aarch64/bits/alltypes.h.in b/arch/aarch64/bits/alltypes.h.in
+index 613c50d..9487d0f 100644
+--- a/arch/aarch64/bits/alltypes.h.in
++++ b/arch/aarch64/bits/alltypes.h.in
+@@ -2,14 +2,15 @@
+ #define _Int64 long
+ #define _Reg long
+ 
+-TYPEDEF struct __va_list_struct {
+-    void *__stack;
+-    void *__gr_top;
+-    void *__vr_top;
+-    int __gr_offs;
+-    int __vr_offs;
+-} va_list[1];
+-TYPEDEF struct __va_list_struct __isoc_va_list[1];
++TYPEDEF struct __va_list_struct { void *__stack; void *__gr_top; void *__vr_top; int __gr_offs; int __vr_offs; } __musl_va_list_t;
++#if defined(__NEED_va_list) && !defined(__DEFINED_va_list)
++typedef __musl_va_list_t va_list[1];
++#define __DEFINED_va_list
++#endif
++#if defined(__NEED___isoc_va_list) && !defined(__DEFINED___isoc_va_list)
++typedef __musl_va_list_t __isoc_va_list[1];
++#define __DEFINED___isoc_va_list
++#endif
+ 
+ #ifndef __cplusplus
+ TYPEDEF unsigned wchar_t;
+-- 
+2.43.0
+

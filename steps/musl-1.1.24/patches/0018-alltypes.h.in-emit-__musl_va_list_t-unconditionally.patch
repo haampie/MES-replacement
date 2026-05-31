@@ -1,0 +1,25 @@
+From 86abc25f23fbfc3a1d4de044d11b8113735ef4a8 Mon Sep 17 00:00:00 2001
+From: Harmen Stoppels <harmen@stoppels.ch>
+Date: Sun, 31 May 2026 10:31:44 +0200
+Subject: [PATCH 18/21] alltypes.h.in: emit __musl_va_list_t unconditionally
+
+---
+ arch/aarch64/bits/alltypes.h.in | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/aarch64/bits/alltypes.h.in b/arch/aarch64/bits/alltypes.h.in
+index 9487d0f..2a668aa 100644
+--- a/arch/aarch64/bits/alltypes.h.in
++++ b/arch/aarch64/bits/alltypes.h.in
+@@ -2,7 +2,7 @@
+ #define _Int64 long
+ #define _Reg long
+ 
+-TYPEDEF struct __va_list_struct { void *__stack; void *__gr_top; void *__vr_top; int __gr_offs; int __vr_offs; } __musl_va_list_t;
++typedef struct __va_list_struct { void *__stack; void *__gr_top; void *__vr_top; int __gr_offs; int __vr_offs; } __musl_va_list_t;
+ #if defined(__NEED_va_list) && !defined(__DEFINED_va_list)
+ typedef __musl_va_list_t va_list[1];
+ #define __DEFINED_va_list
+-- 
+2.43.0
+

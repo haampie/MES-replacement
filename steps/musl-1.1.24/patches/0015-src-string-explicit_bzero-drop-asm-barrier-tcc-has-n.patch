@@ -1,0 +1,30 @@
+From b8b5ed91593be406e0bd2c25c9b5bc2ca44acff0 Mon Sep 17 00:00:00 2001
+From: Harmen Stoppels <harmen@stoppels.ch>
+Date: Sun, 31 May 2026 10:00:31 +0200
+Subject: [PATCH 15/21] src/string/explicit_bzero: drop asm barrier (tcc has no
+ DCE)
+
+---
+ src/string/explicit_bzero.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/src/string/explicit_bzero.c b/src/string/explicit_bzero.c
+index f2e12f2..8b7940a 100644
+--- a/src/string/explicit_bzero.c
++++ b/src/string/explicit_bzero.c
+@@ -1,8 +1,10 @@
+ #define _BSD_SOURCE
+ #include <string.h>
+ 
++/* tcc 0.9.26 lacks inline-asm operand constraints, so the upstream
++   anti-DCE barrier is dropped.  tcc performs no DCE that would erase
++   the memset, so this is safe for the bootstrap build. */
+ void explicit_bzero(void *d, size_t n)
+ {
+-	d = memset(d, 0, n);
+-	__asm__ __volatile__ ("" : : "r"(d) : "memory");
++	memset(d, 0, n);
+ }
+-- 
+2.43.0
+

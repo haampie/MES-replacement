@@ -1,0 +1,64 @@
+From 269ccad6172098db3d45d6c6b6377dcdf674e5fd Mon Sep 17 00:00:00 2001
+From: Harmen Stoppels <harmen@stoppels.ch>
+Date: Sun, 31 May 2026 09:21:31 +0200
+Subject: [PATCH 05/21] arch/aarch64/crt_arch: emit _start as C using raw .int
+ words
+
+tcc 0.9.26 has no AArch64 assembler; replace the top-level inline-asm
+_start with a tcc-friendly C function that recovers the kernel stack
+pointer (sp_at_entry = x29 + 224 after tccs prologue) into x0 and tail-
+calls _start_c.  Mirrors the pattern in mes-aarch64 crt1.c.
+
+The _DYNAMIC argument is dropped because --disable-shared makes
+_start_c ignore it.
+---
+ arch/aarch64/crt_arch.h | 39 ++++++++++++++++++++++++---------------
+ 1 file changed, 24 insertions(+), 15 deletions(-)
+
+diff --git a/arch/aarch64/crt_arch.h b/arch/aarch64/crt_arch.h
+index b64fb3d..79074bf 100644
+--- a/arch/aarch64/crt_arch.h
++++ b/arch/aarch64/crt_arch.h
+@@ -1,15 +1,24 @@
+-__asm__(
+-".text \n"
+-".global " START "\n"
+-".type " START ",%function\n"
+-START ":\n"
+-"	mov x29, #0\n"
+-"	mov x30, #0\n"
+-"	mov x0, sp\n"
+-".weak _DYNAMIC\n"
+-".hidden _DYNAMIC\n"
+-"	adrp x1, _DYNAMIC\n"
+-"	add x1, x1, #:lo12:_DYNAMIC\n"
+-"	and sp, x0, #-16\n"
+-"	b " START "_c\n"
+-);
++/* tcc 0.9.26 has no AArch64 assembler, so the _start glue is written in C
++ * and emitted as raw instruction words via __asm__(".int 0x..").
++ *
++ * tcc's aarch64 function prologue is "stp x29,x30,[sp,#-224]!; mov x29,sp",
++ * so on entry to _start the kernel-provided stack image (argc, argv[], NULL,
++ * envp[], NULL, auxv...) starts at x29+224.  We pass that pointer to
++ * _start_c as its sole argument.  _DYNAMIC is omitted because this build is
++ * --disable-shared and _start_c never reads its second argument in that mode.
++ *
++ * Encodings (verified with llvm-mc --triple=aarch64):
++ *   add x0, x29, #224  = 0x910383a0
++ */
++
++void _start_c();    /* K&R unspecified-args decl matches the mes-aarch64
++                       crt1.c trick: with no prototype, tcc does not
++                       shuffle argument registers around the call, so x0
++                       set immediately above survives into _start_c. */
++
++void _start(void)
++{
++	__asm__(".int 0x910383a0"); /* add x0, x29, #224  ; x0 = sp at entry */
++	_start_c();
++	/* _start_c -> __libc_start_main -> exit(); never returns. */
++}
+-- 
+2.43.0
+

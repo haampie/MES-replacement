@@ -1,0 +1,30 @@
+From ec03ad1bf3833f425aeb4d1f9aa007e6268e927b Mon Sep 17 00:00:00 2001
+From: Harmen Stoppels <harmen@stoppels.ch>
+Date: Sun, 31 May 2026 09:27:35 +0200
+Subject: [PATCH 11/21] src/env/__libc_start_main: drop reorder barrier (tcc
+ lacks asm operands)
+
+The 'asm volatile' with a "+r" constraint exists only to stop the
+compiler hoisting libc_start_main_stage2 across __init_libc.  tcc 0.9.26
+has neither asm-operand support nor aggressive instruction scheduling,
+so removing the barrier is safe in this build.
+---
+ src/env/__libc_start_main.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/env/__libc_start_main.c b/src/env/__libc_start_main.c
+index 8fbe526..87aeb88 100644
+--- a/src/env/__libc_start_main.c
++++ b/src/env/__libc_start_main.c
+@@ -81,7 +81,7 @@ int __libc_start_main(int (*main)(int,char **,char **), int argc, char **argv)
+ 	/* Barrier against hoisting application code or anything using ssp
+ 	 * or thread pointer prior to its initialization above. */
+ 	lsm2_fn *stage2 = libc_start_main_stage2;
+-	__asm__ ( "" : "+r"(stage2) : : "memory" );
++	/* asm reorder barrier removed for tcc */
+ 	return stage2(main, argc, argv);
+ }
+ 
+-- 
+2.43.0
+

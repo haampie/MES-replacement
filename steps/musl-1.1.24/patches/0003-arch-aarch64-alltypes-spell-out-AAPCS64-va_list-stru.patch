@@ -1,0 +1,30 @@
+From 6a97873d09cd501046caf2dcf943568205e1d0a7 Mon Sep 17 00:00:00 2001
+From: Harmen Stoppels <harmen@stoppels.ch>
+Date: Sun, 31 May 2026 09:15:34 +0200
+Subject: [PATCH 03/21] arch/aarch64/alltypes: spell out AAPCS64 va_list struct
+
+tcc 0.9.26 has no __builtin_va_list. Provide the explicit AAPCS64
+register-save-area struct matching the typedef in tccs own
+include/stdarg.h for __aarch64__.
+---
+ arch/aarch64/bits/alltypes.h.in | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/arch/aarch64/bits/alltypes.h.in b/arch/aarch64/bits/alltypes.h.in
+index d56abda..da9bb26 100644
+--- a/arch/aarch64/bits/alltypes.h.in
++++ b/arch/aarch64/bits/alltypes.h.in
+@@ -2,8 +2,8 @@
+ #define _Int64 long
+ #define _Reg long
+ 
+-TYPEDEF __builtin_va_list va_list;
+-TYPEDEF __builtin_va_list __isoc_va_list;
++TYPEDEF struct { void *__stack; void *__gr_top; void *__vr_top; int __gr_offs; int __vr_offs; } va_list;
++TYPEDEF struct { void *__stack; void *__gr_top; void *__vr_top; int __gr_offs; int __vr_offs; } __isoc_va_list;
+ 
+ #ifndef __cplusplus
+ TYPEDEF unsigned wchar_t;
+-- 
+2.43.0
+

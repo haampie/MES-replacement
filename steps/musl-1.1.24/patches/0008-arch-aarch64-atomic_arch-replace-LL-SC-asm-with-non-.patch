@@ -1,0 +1,138 @@
+From 6360bb08f4d78d20336196c135c8db7cf79b97b2 Mon Sep 17 00:00:00 2001
+From: Harmen Stoppels <harmen@stoppels.ch>
+Date: Sun, 31 May 2026 09:24:06 +0200
+Subject: [PATCH 08/21] arch/aarch64/atomic_arch: replace LL/SC asm with
+ non-atomic C
+
+KNOWN REGRESSION (must revisit before any multithreaded use).
+
+The upstream implementations use ldaxr/stlxr LL/SC pairs that tcc 0.9.26
+cannot assemble.  Moving them out-of-line would break the monitor
+reservation across the function-call boundary, so neither the inline-asm
+form nor a raw-.int rewrite is workable.
+
+For now provide plain non-atomic C implementations.  These are correct
+for single-threaded use (hello-world bootstrap smoke test) but unsound
+for any pthread / shared-state workload.  a_ctz_64/a_clz_64 are
+implemented as straight bit loops.
+---
+ arch/aarch64/atomic_arch.h | 63 ++++++++++++++++----------------------
+ 1 file changed, 27 insertions(+), 36 deletions(-)
+
+diff --git a/arch/aarch64/atomic_arch.h b/arch/aarch64/atomic_arch.h
+index 40fefc2..3d05c27 100644
+--- a/arch/aarch64/atomic_arch.h
++++ b/arch/aarch64/atomic_arch.h
+@@ -1,82 +1,73 @@
++/* tcc 0.9.26 has no AArch64 assembler.  Real musl uses ldaxr/stlxr LL/SC
++ * pairs here; moving them out-of-line would break the monitor reservation,
++ * so we drop atomicity entirely and rely on the build being single-threaded.
++ *
++ * TODO(revisit): not safe once we link pthread paths or anything that uses
++ * a_cas under real concurrency.  When tcc gains aarch64 inline-asm support
++ * (or we patch one in), restore the upstream LL/SC implementations.
++ */
++
+ #define a_ll a_ll
+ static inline int a_ll(volatile int *p)
+ {
+-	int v;
+-	__asm__ __volatile__ ("ldaxr %w0,%1" : "=r"(v) : "Q"(*p));
+-	return v;
++	return *p;
+ }
+ 
+ #define a_sc a_sc
+ static inline int a_sc(volatile int *p, int v)
+ {
+-	int r;
+-	__asm__ __volatile__ ("stlxr %w0,%w2,%1" : "=&r"(r), "=Q"(*p) : "r"(v) : "memory");
+-	return !r;
++	*p = v;
++	return 1;
+ }
+ 
+ #define a_barrier a_barrier
+ static inline void a_barrier()
+ {
+-	__asm__ __volatile__ ("dmb ish" : : : "memory");
+ }
+ 
+ #define a_cas a_cas
+ static inline int a_cas(volatile int *p, int t, int s)
+ {
+-	int old;
+-	do {
+-		old = a_ll(p);
+-		if (old != t) {
+-			a_barrier();
+-			break;
+-		}
+-	} while (!a_sc(p, s));
++	int old = *p;
++	if (old == t) *p = s;
+ 	return old;
+ }
+ 
+ #define a_ll_p a_ll_p
+ static inline void *a_ll_p(volatile void *p)
+ {
+-	void *v;
+-	__asm__ __volatile__ ("ldaxr %0, %1" : "=r"(v) : "Q"(*(void *volatile *)p));
+-	return v;
++	return *(void *volatile *)p;
+ }
+ 
+ #define a_sc_p a_sc_p
+ static inline int a_sc_p(volatile int *p, void *v)
+ {
+-	int r;
+-	__asm__ __volatile__ ("stlxr %w0,%2,%1" : "=&r"(r), "=Q"(*(void *volatile *)p) : "r"(v) : "memory");
+-	return !r;
++	*(void *volatile *)p = v;
++	return 1;
+ }
+ 
+ #define a_cas_p a_cas_p
+ static inline void *a_cas_p(volatile void *p, void *t, void *s)
+ {
+-	void *old;
+-	do {
+-		old = a_ll_p(p);
+-		if (old != t) {
+-			a_barrier();
+-			break;
+-		}
+-	} while (!a_sc_p(p, s));
++	void *old = *(void *volatile *)p;
++	if (old == t) *(void *volatile *)p = s;
+ 	return old;
+ }
+ 
+ #define a_ctz_64 a_ctz_64
+ static inline int a_ctz_64(uint64_t x)
+ {
+-	__asm__(
+-		"	rbit %0, %1\n"
+-		"	clz %0, %0\n"
+-		: "=r"(x) : "r"(x));
+-	return x;
++	int n = 0;
++	if (!x) return 64;
++	while (!(x & 1)) { x >>= 1; n++; }
++	return n;
+ }
+ 
+ #define a_clz_64 a_clz_64
+ static inline int a_clz_64(uint64_t x)
+ {
+-	__asm__("clz %0, %1" : "=r"(x) : "r"(x));
+-	return x;
++	int n = 0;
++	if (!x) return 64;
++	while (!(x & ((uint64_t)1 << 63))) { x <<= 1; n++; }
++	return n;
+ }
+-- 
+2.43.0
+

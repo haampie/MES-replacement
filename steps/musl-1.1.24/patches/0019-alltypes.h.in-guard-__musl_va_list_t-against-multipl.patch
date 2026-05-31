@@ -1,0 +1,28 @@
+From cf1055395636b866e03a8a209a524925c2ec02d4 Mon Sep 17 00:00:00 2001
+From: Harmen Stoppels <harmen@stoppels.ch>
+Date: Sun, 31 May 2026 10:32:03 +0200
+Subject: [PATCH 19/21] alltypes.h.in: guard __musl_va_list_t against multiple
+ inclusion
+
+---
+ arch/aarch64/bits/alltypes.h.in | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/arch/aarch64/bits/alltypes.h.in b/arch/aarch64/bits/alltypes.h.in
+index 2a668aa..0252c5c 100644
+--- a/arch/aarch64/bits/alltypes.h.in
++++ b/arch/aarch64/bits/alltypes.h.in
+@@ -2,7 +2,10 @@
+ #define _Int64 long
+ #define _Reg long
+ 
++#ifndef __DEFINED___musl_va_list_t
+ typedef struct __va_list_struct { void *__stack; void *__gr_top; void *__vr_top; int __gr_offs; int __vr_offs; } __musl_va_list_t;
++#define __DEFINED___musl_va_list_t
++#endif
+ #if defined(__NEED_va_list) && !defined(__DEFINED_va_list)
+ typedef __musl_va_list_t va_list[1];
+ #define __DEFINED_va_list
+-- 
+2.43.0
+

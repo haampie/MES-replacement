@@ -1,0 +1,674 @@
+From 8a1c222675b6e6308e4ed4292cd482391cc2f577 Mon Sep 17 00:00:00 2001
+From: Harmen Stoppels <harmen@stoppels.ch>
+Date: Sun, 31 May 2026 09:56:34 +0200
+Subject: [PATCH 14/21] Drop arch-specific files that require gcc inline-asm
+ operands
+
+- arch/aarch64/bits/alltypes.h.in: share __va_list_struct tag so
+  va_list and __isoc_va_list are the same type (tcc rejects casting
+  between identical-shape anonymous structs).
+- src/math/aarch64: remove all asm shims; generic C math takes over.
+---
+ arch/aarch64/bits/alltypes.h.in |   4 +-
+ build.err                       | 168 ++++++++++++++++++++++++++++++++
+ src/math/aarch64/ceil.c         |   7 --
+ src/math/aarch64/ceilf.c        |   7 --
+ src/math/aarch64/fabs.c         |   7 --
+ src/math/aarch64/fabsf.c        |   7 --
+ src/math/aarch64/floor.c        |   7 --
+ src/math/aarch64/floorf.c       |   7 --
+ src/math/aarch64/fma.c          |   7 --
+ src/math/aarch64/fmaf.c         |   7 --
+ src/math/aarch64/fmax.c         |   7 --
+ src/math/aarch64/fmaxf.c        |   7 --
+ src/math/aarch64/fmin.c         |   7 --
+ src/math/aarch64/fminf.c        |   7 --
+ src/math/aarch64/llrint.c       |  10 --
+ src/math/aarch64/llrintf.c      |  10 --
+ src/math/aarch64/llround.c      |   8 --
+ src/math/aarch64/llroundf.c     |   8 --
+ src/math/aarch64/lrint.c        |  10 --
+ src/math/aarch64/lrintf.c       |  10 --
+ src/math/aarch64/lround.c       |   8 --
+ src/math/aarch64/lroundf.c      |   8 --
+ src/math/aarch64/nearbyint.c    |   7 --
+ src/math/aarch64/nearbyintf.c   |   7 --
+ src/math/aarch64/rint.c         |   7 --
+ src/math/aarch64/rintf.c        |   7 --
+ src/math/aarch64/round.c        |   7 --
+ src/math/aarch64/roundf.c       |   7 --
+ src/math/aarch64/sqrt.c         |   7 --
+ src/math/aarch64/sqrtf.c        |   7 --
+ src/math/aarch64/trunc.c        |   7 --
+ src/math/aarch64/truncf.c       |   7 --
+ 32 files changed, 170 insertions(+), 228 deletions(-)
+ create mode 100644 build.err
+ delete mode 100644 src/math/aarch64/ceil.c
+ delete mode 100644 src/math/aarch64/ceilf.c
+ delete mode 100644 src/math/aarch64/fabs.c
+ delete mode 100644 src/math/aarch64/fabsf.c
+ delete mode 100644 src/math/aarch64/floor.c
+ delete mode 100644 src/math/aarch64/floorf.c
+ delete mode 100644 src/math/aarch64/fma.c
+ delete mode 100644 src/math/aarch64/fmaf.c
+ delete mode 100644 src/math/aarch64/fmax.c
+ delete mode 100644 src/math/aarch64/fmaxf.c
+ delete mode 100644 src/math/aarch64/fmin.c
+ delete mode 100644 src/math/aarch64/fminf.c
+ delete mode 100644 src/math/aarch64/llrint.c
+ delete mode 100644 src/math/aarch64/llrintf.c
+ delete mode 100644 src/math/aarch64/llround.c
+ delete mode 100644 src/math/aarch64/llroundf.c
+ delete mode 100644 src/math/aarch64/lrint.c
+ delete mode 100644 src/math/aarch64/lrintf.c
+ delete mode 100644 src/math/aarch64/lround.c
+ delete mode 100644 src/math/aarch64/lroundf.c
+ delete mode 100644 src/math/aarch64/nearbyint.c
+ delete mode 100644 src/math/aarch64/nearbyintf.c
+ delete mode 100644 src/math/aarch64/rint.c
+ delete mode 100644 src/math/aarch64/rintf.c
+ delete mode 100644 src/math/aarch64/round.c
+ delete mode 100644 src/math/aarch64/roundf.c
+ delete mode 100644 src/math/aarch64/sqrt.c
+ delete mode 100644 src/math/aarch64/sqrtf.c
+ delete mode 100644 src/math/aarch64/trunc.c
+ delete mode 100644 src/math/aarch64/truncf.c
+
+diff --git a/arch/aarch64/bits/alltypes.h.in b/arch/aarch64/bits/alltypes.h.in
+index da9bb26..864843d 100644
+--- a/arch/aarch64/bits/alltypes.h.in
++++ b/arch/aarch64/bits/alltypes.h.in
+@@ -2,8 +2,8 @@
+ #define _Int64 long
+ #define _Reg long
+ 
+-TYPEDEF struct { void *__stack; void *__gr_top; void *__vr_top; int __gr_offs; int __vr_offs; } va_list;
+-TYPEDEF struct { void *__stack; void *__gr_top; void *__vr_top; int __gr_offs; int __vr_offs; } __isoc_va_list;
++TYPEDEF struct __va_list_struct { void *__stack; void *__gr_top; void *__vr_top; int __gr_offs; int __vr_offs; } va_list;
++TYPEDEF struct __va_list_struct __isoc_va_list;
+ 
+ #ifndef __cplusplus
+ TYPEDEF unsigned wchar_t;
+diff --git a/build.err b/build.err
+new file mode 100644
+index 0000000..ee4f7ea
+--- /dev/null
++++ b/build.err
+@@ -0,0 +1,168 @@
++src/ldso/dlerror.c:50: error: cannot cast 'struct <anonymous>' to 'struct <anonymous>'
++make: *** [Makefile:148: obj/src/ldso/dlerror.o] Error 1
++src/legacy/err.c:12: error: cannot cast 'struct <anonymous>' to 'struct <anonymous>'
++make: *** [Makefile:148: obj/src/legacy/err.o] Error 1
++assert fail: 0
++make: *** [Makefile:148: obj/src/locale/strfmon.o] Segmentation fault (core dumped)
++assert fail: f == VT_FLOAT || f == VT_DOUBLE || f == VT_LDOUBLE
++make: *** [Makefile:148: obj/src/math/__cosl.o] Segmentation fault (core dumped)
++assert fail: f == VT_FLOAT || f == VT_DOUBLE || f == VT_LDOUBLE
++make: *** [Makefile:148: obj/src/math/__sinl.o] Segmentation fault (core dumped)
++assert fail: f == VT_FLOAT || f == VT_DOUBLE || f == VT_LDOUBLE
++make: *** [Makefile:148: obj/src/math/__tanl.o] Segmentation fault (core dumped)
++src/math/aarch64/ceil.c:5: error: invalid operand reference after %
++make: *** [Makefile:148: obj/src/math/aarch64/ceil.o] Error 1
++src/math/aarch64/ceilf.c:5: error: invalid operand reference after %
++make: *** [Makefile:148: obj/src/math/aarch64/ceilf.o] Error 1
++src/math/aarch64/fabs.c:5: error: invalid operand reference after %
++make: *** [Makefile:148: obj/src/math/aarch64/fabs.o] Error 1
++src/math/aarch64/fabsf.c:5: error: invalid operand reference after %
++make: *** [Makefile:148: obj/src/math/aarch64/fabsf.o] Error 1
++src/math/aarch64/floor.c:5: error: invalid operand reference after %
++make: *** [Makefile:148: obj/src/math/aarch64/floor.o] Error 1
++src/math/aarch64/floorf.c:5: error: invalid operand reference after %
++make: *** [Makefile:148: obj/src/math/aarch64/floorf.o] Error 1
++src/math/aarch64/fma.c:5: error: invalid operand reference after %
++make: *** [Makefile:148: obj/src/math/aarch64/fma.o] Error 1
++src/math/aarch64/fmaf.c:5: error: invalid operand reference after %
++make: *** [Makefile:148: obj/src/math/aarch64/fmaf.o] Error 1
++src/math/aarch64/fmax.c:5: error: invalid operand reference after %
++make: *** [Makefile:148: obj/src/math/aarch64/fmax.o] Error 1
++src/math/aarch64/fmaxf.c:5: error: invalid operand reference after %
++make: *** [Makefile:148: obj/src/math/aarch64/fmaxf.o] Error 1
++src/math/aarch64/fmin.c:5: error: invalid operand reference after %
++make: *** [Makefile:148: obj/src/math/aarch64/fmin.o] Error 1
++src/math/aarch64/fminf.c:5: error: invalid operand reference after %
++make: *** [Makefile:148: obj/src/math/aarch64/fminf.o] Error 1
++src/math/aarch64/llrint.c:8: error: invalid operand reference after %
++make: *** [Makefile:148: obj/src/math/aarch64/llrint.o] Error 1
++src/math/aarch64/llrintf.c:8: error: invalid operand reference after %
++make: *** [Makefile:148: obj/src/math/aarch64/llrintf.o] Error 1
++src/math/aarch64/llround.c:6: error: invalid operand reference after %
++make: *** [Makefile:148: obj/src/math/aarch64/llround.o] Error 1
++src/math/aarch64/llroundf.c:6: error: invalid operand reference after %
++make: *** [Makefile:148: obj/src/math/aarch64/llroundf.o] Error 1
++src/math/aarch64/lrint.c:8: error: invalid operand reference after %
++make: *** [Makefile:148: obj/src/math/aarch64/lrint.o] Error 1
++src/math/aarch64/lrintf.c:8: error: invalid operand reference after %
++make: *** [Makefile:148: obj/src/math/aarch64/lrintf.o] Error 1
++src/math/aarch64/lround.c:6: error: invalid operand reference after %
++make: *** [Makefile:148: obj/src/math/aarch64/lround.o] Error 1
++src/math/aarch64/lroundf.c:6: error: invalid operand reference after %
++make: *** [Makefile:148: obj/src/math/aarch64/lroundf.o] Error 1
++src/math/aarch64/nearbyint.c:5: error: invalid operand reference after %
++make: *** [Makefile:148: obj/src/math/aarch64/nearbyint.o] Error 1
++src/math/aarch64/nearbyintf.c:5: error: invalid operand reference after %
++make: *** [Makefile:148: obj/src/math/aarch64/nearbyintf.o] Error 1
++src/math/aarch64/rint.c:5: error: invalid operand reference after %
++make: *** [Makefile:148: obj/src/math/aarch64/rint.o] Error 1
++src/math/aarch64/rintf.c:5: error: invalid operand reference after %
++make: *** [Makefile:148: obj/src/math/aarch64/rintf.o] Error 1
++src/math/aarch64/round.c:5: error: invalid operand reference after %
++make: *** [Makefile:148: obj/src/math/aarch64/round.o] Error 1
++src/math/aarch64/roundf.c:5: error: invalid operand reference after %
++make: *** [Makefile:148: obj/src/math/aarch64/roundf.o] Error 1
++src/math/aarch64/sqrt.c:5: error: invalid operand reference after %
++make: *** [Makefile:148: obj/src/math/aarch64/sqrt.o] Error 1
++src/math/aarch64/sqrtf.c:5: error: invalid operand reference after %
++make: *** [Makefile:148: obj/src/math/aarch64/sqrtf.o] Error 1
++src/math/aarch64/trunc.c:5: error: invalid operand reference after %
++make: *** [Makefile:148: obj/src/math/aarch64/trunc.o] Error 1
++src/math/aarch64/truncf.c:5: error: invalid operand reference after %
++make: *** [Makefile:148: obj/src/math/aarch64/truncf.o] Error 1
++assert fail: f == VT_FLOAT || f == VT_DOUBLE || f == VT_LDOUBLE
++make: *** [Makefile:148: obj/src/math/exp2l.o] Segmentation fault (core dumped)
++assert fail: f == VT_FLOAT || f == VT_DOUBLE || f == VT_LDOUBLE
++make: *** [Makefile:148: obj/src/math/j1f.o] Segmentation fault (core dumped)
++src/misc/syslog.c:106: error: cannot cast 'struct <anonymous>' to 'struct <anonymous>'
++make: *** [Makefile:148: obj/src/misc/syslog.o] Error 1
++src/stdio/asprintf.c:10: error: cannot cast 'struct <anonymous>' to 'struct <anonymous>'
++make: *** [Makefile:148: obj/src/stdio/asprintf.o] Error 1
++src/stdio/dprintf.c:9: error: cannot cast 'struct <anonymous>' to 'struct <anonymous>'
++make: *** [Makefile:148: obj/src/stdio/dprintf.o] Error 1
++src/stdio/fprintf.c:9: error: cannot cast 'struct <anonymous>' to 'struct <anonymous>'
++make: *** [Makefile:148: obj/src/stdio/fprintf.o] Error 1
++src/stdio/fscanf.c:9: error: cannot cast 'struct <anonymous>' to 'struct <anonymous>'
++make: *** [Makefile:148: obj/src/stdio/fscanf.o] Error 1
++src/stdio/fwprintf.c:10: error: cannot cast 'struct <anonymous>' to 'struct <anonymous>'
++make: *** [Makefile:148: obj/src/stdio/fwprintf.o] Error 1
++src/stdio/fwscanf.c:10: error: cannot cast 'struct <anonymous>' to 'struct <anonymous>'
++make: *** [Makefile:148: obj/src/stdio/fwscanf.o] Error 1
++src/stdio/printf.c:9: error: cannot cast 'struct <anonymous>' to 'struct <anonymous>'
++make: *** [Makefile:148: obj/src/stdio/printf.o] Error 1
++src/stdio/scanf.c:9: error: cannot cast 'struct <anonymous>' to 'struct <anonymous>'
++make: *** [Makefile:148: obj/src/stdio/scanf.o] Error 1
++src/stdio/snprintf.c:9: error: cannot cast 'struct <anonymous>' to 'struct <anonymous>'
++make: *** [Makefile:148: obj/src/stdio/snprintf.o] Error 1
++src/stdio/sprintf.c:9: error: cannot cast 'struct <anonymous>' to 'struct <anonymous>'
++make: *** [Makefile:148: obj/src/stdio/sprintf.o] Error 1
++src/stdio/sscanf.c:9: error: cannot cast 'struct <anonymous>' to 'struct <anonymous>'
++make: *** [Makefile:148: obj/src/stdio/sscanf.o] Error 1
++src/stdio/swprintf.c:9: error: cannot cast 'struct <anonymous>' to 'struct <anonymous>'
++make: *** [Makefile:148: obj/src/stdio/swprintf.o] Error 1
++src/stdio/swscanf.c:9: error: cannot cast 'struct <anonymous>' to 'struct <anonymous>'
++make: *** [Makefile:148: obj/src/stdio/swscanf.o] Error 1
++src/stdio/vasprintf.c:7: error: incompatible types for redefinition of 'vasprintf'
++make: *** [Makefile:148: obj/src/stdio/vasprintf.o] Error 1
++src/stdio/vdprintf.c:9: error: incompatible types for redefinition of 'vdprintf'
++make: *** [Makefile:148: obj/src/stdio/vdprintf.o] Error 1
++src/stdio/vfprintf.c:658: error: incompatible types for redefinition of 'vfprintf'
++make: *** [Makefile:148: obj/src/stdio/vfprintf.o] Error 1
++src/stdio/vfscanf.c:57: error: incompatible types for redefinition of 'vfscanf'
++make: *** [Makefile:148: obj/src/stdio/vfscanf.o] Error 1
++src/stdio/vfwprintf.c:341: error: incompatible types for redefinition of 'vfwprintf'
++make: *** [Makefile:148: obj/src/stdio/vfwprintf.o] Error 1
++src/stdio/vfwscanf.c:87: error: incompatible types for redefinition of 'vfwscanf'
++make: *** [Makefile:148: obj/src/stdio/vfwscanf.o] Error 1
++src/stdio/vprintf.c:4: error: incompatible types for redefinition of 'vprintf'
++make: *** [Makefile:148: obj/src/stdio/vprintf.o] Error 1
++src/stdio/vscanf.c:5: error: incompatible types for redefinition of 'vscanf'
++make: *** [Makefile:148: obj/src/stdio/vscanf.o] Error 1
++src/stdio/vsnprintf.c:36: error: incompatible types for redefinition of 'vsnprintf'
++make: *** [Makefile:148: obj/src/stdio/vsnprintf.o] Error 1
++src/stdio/vsprintf.c:5: error: incompatible types for redefinition of 'vsprintf'
++make: *** [Makefile:148: obj/src/stdio/vsprintf.o] Error 1
++src/stdio/vsscanf.c:9: error: incompatible types for redefinition of 'vsscanf'
++make: *** [Makefile:148: obj/src/stdio/vsscanf.o] Error 1
++src/stdio/vswprintf.c:38: error: incompatible types for redefinition of 'vswprintf'
++make: *** [Makefile:148: obj/src/stdio/vswprintf.o] Error 1
++src/stdio/vswscanf.c:28: error: incompatible types for redefinition of 'vswscanf'
++make: *** [Makefile:148: obj/src/stdio/vswscanf.o] Error 1
++src/stdio/vwprintf.c:5: error: incompatible types for redefinition of 'vwprintf'
++make: *** [Makefile:148: obj/src/stdio/vwprintf.o] Error 1
++src/stdio/vwscanf.c:6: error: incompatible types for redefinition of 'vwscanf'
++make: *** [Makefile:148: obj/src/stdio/vwscanf.o] Error 1
++src/stdio/wprintf.c:10: error: cannot cast 'struct <anonymous>' to 'struct <anonymous>'
++make: *** [Makefile:148: obj/src/stdio/wprintf.o] Error 1
++src/stdio/wscanf.c:10: error: cannot cast 'struct <anonymous>' to 'struct <anonymous>'
++make: *** [Makefile:148: obj/src/stdio/wscanf.o] Error 1
++src/string/explicit_bzero.c:7: error: AArch64 asm not implemented (only .int/.word data directives are supported).
++make: *** [Makefile:148: obj/src/string/explicit_bzero.o] Error 1
++usage: tcc -ar [rcsv] lib file...
++create library ([abdioptxN] not supported).
++make: *** [Makefile:170: lib/libg.a] Error 1
++usage: tcc -ar [rcsv] lib file...
++create library ([abdioptxN] not supported).
++make: *** [Makefile:170: lib/libm.a] Error 1
++usage: tcc -ar [rcsv] lib file...
++create library ([abdioptxN] not supported).
++make: *** [Makefile:170: lib/librt.a] Error 1
++usage: tcc -ar [rcsv] lib file...
++create library ([abdioptxN] not supported).
++make: *** [Makefile:170: lib/libpthread.a] Error 1
++usage: tcc -ar [rcsv] lib file...
++create library ([abdioptxN] not supported).
++make: *** [Makefile:170: lib/libcrypt.a] Error 1
++usage: tcc -ar [rcsv] lib file...
++create library ([abdioptxN] not supported).
++make: *** [Makefile:170: lib/libutil.a] Error 1
++usage: tcc -ar [rcsv] lib file...
++create library ([abdioptxN] not supported).
++make: *** [Makefile:170: lib/libxnet.a] Error 1
++usage: tcc -ar [rcsv] lib file...
++create library ([abdioptxN] not supported).
++make: *** [Makefile:170: lib/libresolv.a] Error 1
++usage: tcc -ar [rcsv] lib file...
++create library ([abdioptxN] not supported).
++make: *** [Makefile:170: lib/libdl.a] Error 1
++make: Target 'all' not remade because of errors.
+diff --git a/src/math/aarch64/ceil.c b/src/math/aarch64/ceil.c
+deleted file mode 100644
+index ac80c1d..0000000
+--- a/src/math/aarch64/ceil.c
++++ /dev/null
+@@ -1,7 +0,0 @@
+-#include <math.h>
+-
+-double ceil(double x)
+-{
+-	__asm__ ("frintp %d0, %d1" : "=w"(x) : "w"(x));
+-	return x;
+-}
+diff --git a/src/math/aarch64/ceilf.c b/src/math/aarch64/ceilf.c
+deleted file mode 100644
+index 1ef1e9c..0000000
+--- a/src/math/aarch64/ceilf.c
++++ /dev/null
+@@ -1,7 +0,0 @@
+-#include <math.h>
+-
+-float ceilf(float x)
+-{
+-	__asm__ ("frintp %s0, %s1" : "=w"(x) : "w"(x));
+-	return x;
+-}
+diff --git a/src/math/aarch64/fabs.c b/src/math/aarch64/fabs.c
+deleted file mode 100644
+index 5c3ecaf..0000000
+--- a/src/math/aarch64/fabs.c
++++ /dev/null
+@@ -1,7 +0,0 @@
+-#include <math.h>
+-
+-double fabs(double x)
+-{
+-	__asm__ ("fabs %d0, %d1" : "=w"(x) : "w"(x));
+-	return x;
+-}
+diff --git a/src/math/aarch64/fabsf.c b/src/math/aarch64/fabsf.c
+deleted file mode 100644
+index 7fde981..0000000
+--- a/src/math/aarch64/fabsf.c
++++ /dev/null
+@@ -1,7 +0,0 @@
+-#include <math.h>
+-
+-float fabsf(float x)
+-{
+-	__asm__ ("fabs %s0, %s1" : "=w"(x) : "w"(x));
+-	return x;
+-}
+diff --git a/src/math/aarch64/floor.c b/src/math/aarch64/floor.c
+deleted file mode 100644
+index 50ffdb2..0000000
+--- a/src/math/aarch64/floor.c
++++ /dev/null
+@@ -1,7 +0,0 @@
+-#include <math.h>
+-
+-double floor(double x)
+-{
+-	__asm__ ("frintm %d0, %d1" : "=w"(x) : "w"(x));
+-	return x;
+-}
+diff --git a/src/math/aarch64/floorf.c b/src/math/aarch64/floorf.c
+deleted file mode 100644
+index 8d007e9..0000000
+--- a/src/math/aarch64/floorf.c
++++ /dev/null
+@@ -1,7 +0,0 @@
+-#include <math.h>
+-
+-float floorf(float x)
+-{
+-	__asm__ ("frintm %s0, %s1" : "=w"(x) : "w"(x));
+-	return x;
+-}
+diff --git a/src/math/aarch64/fma.c b/src/math/aarch64/fma.c
+deleted file mode 100644
+index 2450ea7..0000000
+--- a/src/math/aarch64/fma.c
++++ /dev/null
+@@ -1,7 +0,0 @@
+-#include <math.h>
+-
+-double fma(double x, double y, double z)
+-{
+-	__asm__ ("fmadd %d0, %d1, %d2, %d3" : "=w"(x) : "w"(x), "w"(y), "w"(z));
+-	return x;
+-}
+diff --git a/src/math/aarch64/fmaf.c b/src/math/aarch64/fmaf.c
+deleted file mode 100644
+index 9a14721..0000000
+--- a/src/math/aarch64/fmaf.c
++++ /dev/null
+@@ -1,7 +0,0 @@
+-#include <math.h>
+-
+-float fmaf(float x, float y, float z)
+-{
+-	__asm__ ("fmadd %s0, %s1, %s2, %s3" : "=w"(x) : "w"(x), "w"(y), "w"(z));
+-	return x;
+-}
+diff --git a/src/math/aarch64/fmax.c b/src/math/aarch64/fmax.c
+deleted file mode 100644
+index 86dcb3b..0000000
+--- a/src/math/aarch64/fmax.c
++++ /dev/null
+@@ -1,7 +0,0 @@
+-#include <math.h>
+-
+-double fmax(double x, double y)
+-{
+-	__asm__ ("fmaxnm %d0, %d1, %d2" : "=w"(x) : "w"(x), "w"(y));
+-	return x;
+-}
+diff --git a/src/math/aarch64/fmaxf.c b/src/math/aarch64/fmaxf.c
+deleted file mode 100644
+index ee5eac2..0000000
+--- a/src/math/aarch64/fmaxf.c
++++ /dev/null
+@@ -1,7 +0,0 @@
+-#include <math.h>
+-
+-float fmaxf(float x, float y)
+-{
+-	__asm__ ("fmaxnm %s0, %s1, %s2" : "=w"(x) : "w"(x), "w"(y));
+-	return x;
+-}
+diff --git a/src/math/aarch64/fmin.c b/src/math/aarch64/fmin.c
+deleted file mode 100644
+index f1e9980..0000000
+--- a/src/math/aarch64/fmin.c
++++ /dev/null
+@@ -1,7 +0,0 @@
+-#include <math.h>
+-
+-double fmin(double x, double y)
+-{
+-	__asm__ ("fminnm %d0, %d1, %d2" : "=w"(x) : "w"(x), "w"(y));
+-	return x;
+-}
+diff --git a/src/math/aarch64/fminf.c b/src/math/aarch64/fminf.c
+deleted file mode 100644
+index 80468f6..0000000
+--- a/src/math/aarch64/fminf.c
++++ /dev/null
+@@ -1,7 +0,0 @@
+-#include <math.h>
+-
+-float fminf(float x, float y)
+-{
+-	__asm__ ("fminnm %s0, %s1, %s2" : "=w"(x) : "w"(x), "w"(y));
+-	return x;
+-}
+diff --git a/src/math/aarch64/llrint.c b/src/math/aarch64/llrint.c
+deleted file mode 100644
+index a9e07a9..0000000
+--- a/src/math/aarch64/llrint.c
++++ /dev/null
+@@ -1,10 +0,0 @@
+-#include <math.h>
+-
+-long long llrint(double x)
+-{
+-	long long n;
+-	__asm__ (
+-		"frintx %d1, %d1\n"
+-		"fcvtzs %x0, %d1\n" : "=r"(n), "+w"(x));
+-	return n;
+-}
+diff --git a/src/math/aarch64/llrintf.c b/src/math/aarch64/llrintf.c
+deleted file mode 100644
+index 12b6804..0000000
+--- a/src/math/aarch64/llrintf.c
++++ /dev/null
+@@ -1,10 +0,0 @@
+-#include <math.h>
+-
+-long long llrintf(float x)
+-{
+-	long long n;
+-	__asm__ (
+-		"frintx %s1, %s1\n"
+-		"fcvtzs %x0, %s1\n" : "=r"(n), "+w"(x));
+-	return n;
+-}
+diff --git a/src/math/aarch64/llround.c b/src/math/aarch64/llround.c
+deleted file mode 100644
+index e09ddd4..0000000
+--- a/src/math/aarch64/llround.c
++++ /dev/null
+@@ -1,8 +0,0 @@
+-#include <math.h>
+-
+-long long llround(double x)
+-{
+-	long long n;
+-	__asm__ ("fcvtas %x0, %d1" : "=r"(n) : "w"(x));
+-	return n;
+-}
+diff --git a/src/math/aarch64/llroundf.c b/src/math/aarch64/llroundf.c
+deleted file mode 100644
+index 1669959..0000000
+--- a/src/math/aarch64/llroundf.c
++++ /dev/null
+@@ -1,8 +0,0 @@
+-#include <math.h>
+-
+-long long llroundf(float x)
+-{
+-	long long n;
+-	__asm__ ("fcvtas %x0, %s1" : "=r"(n) : "w"(x));
+-	return n;
+-}
+diff --git a/src/math/aarch64/lrint.c b/src/math/aarch64/lrint.c
+deleted file mode 100644
+index cb7785a..0000000
+--- a/src/math/aarch64/lrint.c
++++ /dev/null
+@@ -1,10 +0,0 @@
+-#include <math.h>
+-
+-long lrint(double x)
+-{
+-	long n;
+-	__asm__ (
+-		"frintx %d1, %d1\n"
+-		"fcvtzs %x0, %d1\n" : "=r"(n), "+w"(x));
+-	return n;
+-}
+diff --git a/src/math/aarch64/lrintf.c b/src/math/aarch64/lrintf.c
+deleted file mode 100644
+index 4d750d6..0000000
+--- a/src/math/aarch64/lrintf.c
++++ /dev/null
+@@ -1,10 +0,0 @@
+-#include <math.h>
+-
+-long lrintf(float x)
+-{
+-	long n;
+-	__asm__ (
+-		"frintx %s1, %s1\n"
+-		"fcvtzs %x0, %s1\n" : "=r"(n), "+w"(x));
+-	return n;
+-}
+diff --git a/src/math/aarch64/lround.c b/src/math/aarch64/lround.c
+deleted file mode 100644
+index 85656c7..0000000
+--- a/src/math/aarch64/lround.c
++++ /dev/null
+@@ -1,8 +0,0 @@
+-#include <math.h>
+-
+-long lround(double x)
+-{
+-	long n;
+-	__asm__ ("fcvtas %x0, %d1" : "=r"(n) : "w"(x));
+-	return n;
+-}
+diff --git a/src/math/aarch64/lroundf.c b/src/math/aarch64/lroundf.c
+deleted file mode 100644
+index 32e51f3..0000000
+--- a/src/math/aarch64/lroundf.c
++++ /dev/null
+@@ -1,8 +0,0 @@
+-#include <math.h>
+-
+-long lroundf(float x)
+-{
+-	long n;
+-	__asm__ ("fcvtas %x0, %s1" : "=r"(n) : "w"(x));
+-	return n;
+-}
+diff --git a/src/math/aarch64/nearbyint.c b/src/math/aarch64/nearbyint.c
+deleted file mode 100644
+index 9c3fdb4..0000000
+--- a/src/math/aarch64/nearbyint.c
++++ /dev/null
+@@ -1,7 +0,0 @@
+-#include <math.h>
+-
+-double nearbyint(double x)
+-{
+-	__asm__ ("frinti %d0, %d1" : "=w"(x) : "w"(x));
+-	return x;
+-}
+diff --git a/src/math/aarch64/nearbyintf.c b/src/math/aarch64/nearbyintf.c
+deleted file mode 100644
+index 8e7f61d..0000000
+--- a/src/math/aarch64/nearbyintf.c
++++ /dev/null
+@@ -1,7 +0,0 @@
+-#include <math.h>
+-
+-float nearbyintf(float x)
+-{
+-	__asm__ ("frinti %s0, %s1" : "=w"(x) : "w"(x));
+-	return x;
+-}
+diff --git a/src/math/aarch64/rint.c b/src/math/aarch64/rint.c
+deleted file mode 100644
+index 45b194b..0000000
+--- a/src/math/aarch64/rint.c
++++ /dev/null
+@@ -1,7 +0,0 @@
+-#include <math.h>
+-
+-double rint(double x)
+-{
+-	__asm__ ("frintx %d0, %d1" : "=w"(x) : "w"(x));
+-	return x;
+-}
+diff --git a/src/math/aarch64/rintf.c b/src/math/aarch64/rintf.c
+deleted file mode 100644
+index 1ae7dd2..0000000
+--- a/src/math/aarch64/rintf.c
++++ /dev/null
+@@ -1,7 +0,0 @@
+-#include <math.h>
+-
+-float rintf(float x)
+-{
+-	__asm__ ("frintx %s0, %s1" : "=w"(x) : "w"(x));
+-	return x;
+-}
+diff --git a/src/math/aarch64/round.c b/src/math/aarch64/round.c
+deleted file mode 100644
+index 897a84c..0000000
+--- a/src/math/aarch64/round.c
++++ /dev/null
+@@ -1,7 +0,0 @@
+-#include <math.h>
+-
+-double round(double x)
+-{
+-	__asm__ ("frinta %d0, %d1" : "=w"(x) : "w"(x));
+-	return x;
+-}
+diff --git a/src/math/aarch64/roundf.c b/src/math/aarch64/roundf.c
+deleted file mode 100644
+index 91637ea..0000000
+--- a/src/math/aarch64/roundf.c
++++ /dev/null
+@@ -1,7 +0,0 @@
+-#include <math.h>
+-
+-float roundf(float x)
+-{
+-	__asm__ ("frinta %s0, %s1" : "=w"(x) : "w"(x));
+-	return x;
+-}
+diff --git a/src/math/aarch64/sqrt.c b/src/math/aarch64/sqrt.c
+deleted file mode 100644
+index fe93c3e..0000000
+--- a/src/math/aarch64/sqrt.c
++++ /dev/null
+@@ -1,7 +0,0 @@
+-#include <math.h>
+-
+-double sqrt(double x)
+-{
+-	__asm__ ("fsqrt %d0, %d1" : "=w"(x) : "w"(x));
+-	return x;
+-}
+diff --git a/src/math/aarch64/sqrtf.c b/src/math/aarch64/sqrtf.c
+deleted file mode 100644
+index 275c7f3..0000000
+--- a/src/math/aarch64/sqrtf.c
++++ /dev/null
+@@ -1,7 +0,0 @@
+-#include <math.h>
+-
+-float sqrtf(float x)
+-{
+-	__asm__ ("fsqrt %s0, %s1" : "=w"(x) : "w"(x));
+-	return x;
+-}
+diff --git a/src/math/aarch64/trunc.c b/src/math/aarch64/trunc.c
+deleted file mode 100644
+index e592147..0000000
+--- a/src/math/aarch64/trunc.c
++++ /dev/null
+@@ -1,7 +0,0 @@
+-#include <math.h>
+-
+-double trunc(double x)
+-{
+-	__asm__ ("frintz %d0, %d1" : "=w"(x) : "w"(x));
+-	return x;
+-}
+diff --git a/src/math/aarch64/truncf.c b/src/math/aarch64/truncf.c
+deleted file mode 100644
+index 20ef30f..0000000
+--- a/src/math/aarch64/truncf.c
++++ /dev/null
+@@ -1,7 +0,0 @@
+-#include <math.h>
+-
+-float truncf(float x)
+-{
+-	__asm__ ("frintz %s0, %s1" : "=w"(x) : "w"(x));
+-	return x;
+-}
+-- 
+2.43.0
+

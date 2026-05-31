@@ -1,0 +1,32 @@
+From 22110c995d063970d66b229022b502e12c450b60 Mon Sep 17 00:00:00 2001
+From: Harmen Stoppels <harmen@stoppels.ch>
+Date: Sun, 31 May 2026 10:32:33 +0200
+Subject: [PATCH 20/21] Makefile: archive an empty placeholder .o into
+ EMPTY_LIBS
+
+tcc -ar refuses to create an archive with no member files.  Push a
+trivial obj/empty.o into each so libg.a / libm.a / etc. exist as link
+stubs.
+---
+ Makefile | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index 807dca4..6a77c87 100644
+--- a/Makefile
++++ b/Makefile
+@@ -165,9 +165,9 @@ lib/libc.a: $(AOBJS)
+ 	$(AR) rc $@ $(AOBJS)
+ 	$(RANLIB) $@
+ 
+-$(EMPTY_LIBS):
++$(EMPTY_LIBS): obj/empty.o
+ 	rm -f $@
+-	$(AR) rc $@
++	$(AR) rc $@ obj/empty.o
+ 
+ lib/%.o: obj/crt/$(ARCH)/%.o
+ 	cp $< $@
+-- 
+2.43.0
+

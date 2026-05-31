@@ -1,0 +1,37 @@
+From f59ee1391d31e4d3a48628487cc04dcb4a472ad3 Mon Sep 17 00:00:00 2001
+From: Harmen Stoppels <harmen@stoppels.ch>
+Date: Sun, 31 May 2026 09:20:45 +0200
+Subject: [PATCH 04/21] Remove crt/rcrt1.c: static-PIE startup unused with
+ --disable-shared
+
+rcrt1.o is consumed only by gcc -static-pie / -pie links.  We build
+--disable-shared, so the object is dead weight, and its sole content
+(crt_arch.h + ldso/dlstart.c) drags in inline asm tcc cannot handle.
+---
+ crt/rcrt1.c | 14 --------------
+ 1 file changed, 14 deletions(-)
+ delete mode 100644 crt/rcrt1.c
+
+diff --git a/crt/rcrt1.c b/crt/rcrt1.c
+deleted file mode 100644
+index 901dff6..0000000
+--- a/crt/rcrt1.c
++++ /dev/null
+@@ -1,14 +0,0 @@
+-#define START "_start"
+-#define _dlstart_c _start_c
+-#include "../ldso/dlstart.c"
+-
+-int main();
+-weak void _init();
+-weak void _fini();
+-int __libc_start_main(int (*)(), int, char **,
+-	void (*)(), void(*)(), void(*)());
+-
+-hidden void __dls2(unsigned char *base, size_t *sp)
+-{
+-	__libc_start_main(main, *sp, (void *)(sp+1), _init, _fini, 0);
+-}
+-- 
+2.43.0
+
