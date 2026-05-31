@@ -143,7 +143,19 @@ if match ${ARCH} arm64; then
         ../../simple-patches/arm64-load-const-lval.before ../../simple-patches/arm64-load-const-lval.after
     simple-patch arm64-gen.c \
         ../../simple-patches/arm64-store-const-lval.before ../../simple-patches/arm64-store-const-lval.after
+<<<<<<< HEAD
 >>>>>>> 14f8a13 (tcc-arm64: handle VT_CONST|VT_LVAL load/store)
+||||||| parent of 8da539f (tcc-arm64: mask qualifiers in gen_cvt_ftof type compares)
+=======
+
+    # gen_cvt_ftof() compares the full type word against bare base-type values
+    # (VT_FLOAT/VT_DOUBLE/VT_LDOUBLE), so any qualifier bit on the operand
+    # (notably VT_CONSTANT = 0x800 from a `const` source) makes the entry
+    # assert trip and the converter take a wrong branch.  Mask both `t` and
+    # `f` with VT_BTYPE at entry so the comparisons see only the base type.
+    simple-patch arm64-gen.c \
+        ../../simple-patches/arm64-cvt-ftof-mask.before ../../simple-patches/arm64-cvt-ftof-mask.after
+>>>>>>> 8da539f (tcc-arm64: mask qualifiers in gen_cvt_ftof type compares)
 fi
 
 

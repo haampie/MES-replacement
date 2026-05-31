@@ -1,0 +1,5 @@
+ST_FUNC void gen_cvt_ftof(int t)
+{
+    int f = vtop[0].type.t & VT_BTYPE;
+    t &= VT_BTYPE;
+    assert(t == VT_FLOAT || t == VT_DOUBLE || t == VT_LDOUBLE);
