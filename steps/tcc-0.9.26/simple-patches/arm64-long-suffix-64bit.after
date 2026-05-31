@@ -1,0 +1,3 @@
+#if (!defined TCC_TARGET_X86_64 && !defined TCC_TARGET_ARM64) || defined TCC_TARGET_PE
+                if (lcount == 2)
+#endif

@@ -20,6 +20,11 @@ set -ex
 tar -xf "${DISTFILES}/musl-1.1.24.tar.gz"
 cd musl-1.1.24
 
+# 1b. Patch 13 adds include/stdarg.h, but the tarball already ships one;
+# drop the upstream copy so patch can create the new one without
+# prompting.
+rm -f include/stdarg.h
+
 # 2. Apply the patch series in order.  These cover:
 #    - tcc 0.9.26 has no aarch64 instruction assembler -> rewrite every
 #      .s file as a .c emitting raw .int instruction words (patches 5, 7,
@@ -35,7 +40,12 @@ cd musl-1.1.24
 #      (patches 1, 20).  Note: patch 20 only changes how empty.o is
 #      *consumed*; nothing generates obj/empty.o, hence step 5 below.
 for p in "${PATCHDIR}"/*.patch; do
-    patch -p1 < "$p"
+    # --remove-empty-files: patch 21 "deletes" 13 aarch64 .s files via
+    # git-style diff; `patch` interprets that as truncating them to zero
+    # bytes and only removes them if asked.  Without this, the Makefile
+    # still finds the .s files (now empty) and feeds them to tcc, which
+    # has no aarch64 assembler -> build fails.
+    patch -p1 --batch --remove-empty-files < "$p"
 done
 
 # 3. Configure.  --disable-shared avoids needing a working dynamic
