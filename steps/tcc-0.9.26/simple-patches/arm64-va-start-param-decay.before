@@ -1,0 +1,3 @@
+    --vtop; // we don't need the "arg"
+    gaddrof();
+    r = intr(gv(RC_INT));

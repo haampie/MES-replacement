@@ -1,0 +1,3 @@
+    /* See arm64-va-start-param-decay: only gaddrof a local va_list (array). */
+    if (vtop->type.t & VT_ARRAY) gaddrof();
+    r0 = intr(gv(RC_INT));

@@ -1,0 +1,42 @@
+From a2ab80cf770f377835d64a62ae831b14977a07ff Mon Sep 17 00:00:00 2001
+From: Harmen Stoppels <harmen@stoppels.ch>
+Date: Sun, 31 May 2026 15:06:44 +0200
+Subject: [PATCH 1/2] Pre-configure tweaks: drop gas/read.c wchar.h include;
+ stub bfd/po/{install,all,info}
+
+per commencement.scm musl-boot0 phase fix-build (line 1208-1221)
+---
+ bfd/po/all     | 0
+ bfd/po/info    | 0
+ bfd/po/install | 0
+ gas/read.c     | 2 +-
+ 4 files changed, 1 insertion(+), 1 deletion(-)
+ create mode 100644 bfd/po/all
+ create mode 100644 bfd/po/info
+ create mode 100644 bfd/po/install
+
+diff --git a/bfd/po/all b/bfd/po/all
+new file mode 100644
+index 00000000..e69de29b
+diff --git a/bfd/po/info b/bfd/po/info
+new file mode 100644
+index 00000000..e69de29b
+diff --git a/bfd/po/install b/bfd/po/install
+new file mode 100644
+index 00000000..e69de29b
+diff --git a/gas/read.c b/gas/read.c
+index 7bf52f11..817ee980 100644
+--- a/gas/read.c
++++ b/gas/read.c
+@@ -38,7 +38,7 @@
+ #include "obstack.h"
+ #include "ecoff.h"
+ #include "dw2gencfi.h"
+-#include "wchar.h"
++
+ 
+ #ifndef TC_START_LABEL
+ #define TC_START_LABEL(STR, NUL_CHAR, NEXT_CHAR) (NEXT_CHAR == ':')
+-- 
+2.43.0
+

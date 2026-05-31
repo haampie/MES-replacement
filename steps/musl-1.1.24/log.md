@@ -161,53 +161,93 @@ Then end-to-end:
 
 Status: **DONE.**  Patched seed tcc -> musl -> tcc-musl self-hosts.
 
----
+## Follow-up: array-form `va_list` exposes a second seed-tcc codegen bug
 
-(Historical: earlier attempt to short-circuit the kaem chain.)
+Patches 16-19 switch musl's aarch64 `va_list` to AAPCS64 array form
+(`struct __va_list_struct va_list[1]`).  This is necessary for
+in-musl printf-family forwarding but turns out to expose another
+bug in seed tcc's `arm64-gen.c`: a *parameter* declared `va_list ap`
+has its array decayed to a pointer at declaration time, so the
+`gaddrof()` at the top of `gen_va_start`/`gen_va_arg` takes the
+address of the parameter slot rather than the va_list itself.
+Forwarded `va_arg` then reads garbage.
 
-## Verification attempt outside the kaem chain
+Fix lives in `steps/tcc-0.9.26/simple-patches/arm64-va-{start,arg}-param-decay.*`
+and is wired into `pass1.kaem`.  See
+`steps/binutils-2.30/log.md` "Issue 4" for full diagnosis + repro
+(crash was `as-new` segfaulting in libiberty `vconcat_copy`).
 
-Tried to short-circuit the bootstrap by rebuilding the seed tcc
-binary in-tree:
+Requires the same procedure as the long-suffix fix to roll out:
+re-run `task5_arm64.sh` with `UPDATE_CHECKSUMS=True`, then rebuild
+musl, `tcc-musl`, and binutils on top.
 
-1. Applied the patch directly to `tccpp.c` in the source tree under
-   `~/bootstrap-tcc-musl/tcc-src/`.
-2. Used the existing seed tcc (`rootfs/usr/bin/tcc`, built by
-   `tcc_cc` in the M2-based bootstrap chain) to compile this patched
-   `tcc.c` into a new binary `tcc-fixed`, linked against mes-libc.
-3. Confirmed at the parser level: `tcc-fixed` compiled
-   `unsigned long a = -4096UL` into the correct
-   `mov x1, #0xfffffffffffff000` (`movn x1, #0xfff`, opcode
-   `0x9281ffe1`).  Repro program now prints
-   `0xfffffffffffff000` for `-4096UL`.
-4. Ran `build.sh` with `TCC=tcc-fixed` to rebuild musl from scratch.
-   Got partway through (~1500 .o files) before crashing on
-   `src/math/pow_data.c:20`: tcc-fixed rejects
-   `0x1.555555555556p-2 * -2` as "initializer element is not
-   constant" and segfaults — even though the *seed* tcc accepts the
-   exact same line.
+### Rollout progress (2026-05-31)
 
-`tcc-fixed` is the seed tcc's source plus a one-line `tccpp.c` patch.
-The patch only affects integer-L suffix parsing — yet the resulting
-binary handles float constant folding differently from the seed.  The
-explanation is the bootstrap layer mismatch: `tcc.c` itself uses
-`L`-suffixed constants in its own internal logic.  The buggy seed
-parses those constants as 32-bit (so the seed's *own* internals are
-self-consistent with the bug).  When the seed compiles patched
-`tcc.c`, the same internal constants are still parsed as 32-bit (seed
-runs its buggy parser) but produce a binary whose runtime parser
-*also* treats user constants as 64-bit — exposing a latent mismatch in
-the resulting tcc's own folding logic.
+1. **Seed tcc rebuilt.** `task5_arm64.sh` with `UPDATE_CHECKSUMS=True`
+   completed cleanly with both arm64 simple-patches active.  New
+   `/usr/bin/tcc` is MD5 `4a3be79e11a653d7a1c9bc9c9f316b82`; updated
+   checksums committed to `steps/tcc-0.9.26/tcc-0.9.26.arm64.checksums`.
+2. **Fix verified at the seed level.**  Compiling
+   `~/bootstrap-binutils/repro/vc2.c` with the new seed against the
+   prior musl prints `inner: 100 200 300` (was garbage).  Confirms the
+   va_list parameter-decay patch produces correct codegen.
+3. **musl rebuilt.**  `build.sh` against the new seed produces a clean
+   `libc.a` + crt*.o at `~/bootstrap-musl/opt/musl-new/`.  Built
+   `libtcc1.a` (lib-arm64.o helpers) into `musl-new/lib/tcc/`.
+4. **`tcc-musl` rebuilt** (2026-05-31, second attempt).  Following
+   `pass1.kaem`'s tcc-boot0 invocation closely — in particular passing
+   `-DCONFIG_TCC_LIBPATHS=...` and `-DTCC_LIBTCC1="libtcc1.a"` and
+   including the prebuilt `libtcc1.a` (with `lib-arm64.o` soft-float
+   helpers) in the link line — produces a working `tcc-musl`:
 
-Stage-2 (using `tcc-fixed` to rebuild `tcc-fixed`) also fails on
-`pow_data.c` and produces a byte-different binary from stage-1, so
-fixed-point hasn't been reached either.
+   ```
+   tcc -g -static -nostdlib -nostdinc \
+       -DBOOTSTRAP=1 -DHAVE_LONG_LONG=1 -DTCC_TARGET_ARM64=1 \
+       -DCONFIG_TCCDIR=\"$OUT/tcc-prefix/lib/tcc\" \
+       -DCONFIG_SYSROOT=\"/\" \
+       -DCONFIG_TCC_CRTPREFIX=\"$MUSL/lib\" \
+       -DCONFIG_TCC_ELFINTERP=\"/musl/loader\" \
+       -DCONFIG_TCC_SYSINCLUDEPATHS=\"$MUSL/include\" \
+       -DCONFIG_TCC_LIBPATHS=\"$MUSL/lib:$OUT/tcc-prefix/lib/tcc\" \
+       -DTCC_LIBGCC=\"$MUSL/lib/libc.a\" -DTCC_LIBTCC1=\"libtcc1.a\" \
+       -DCONFIG_TCCBOOT=1 -DCONFIG_TCC_STATIC=1 -DCONFIG_USE_LIBGCC=1 \
+       -DTCC_VERSION=\"0.9.26\" -DONE_SOURCE=1 \
+       -I . -I $MUSL/include -o tcc-musl \
+       $MUSL/lib/crt1.o $MUSL/lib/crti.o tcc.c \
+       $MUSL/lib/libc.a $MUSL/lib/tcc/libtcc1.a $MUSL/lib/crtn.o
+   ```
 
-### What ultimately resolved it
+   Source: pristine `tcc-0.9.26-1147-gee75a10c` + the 9 arm64
+   simple-patches wired in `pass1.kaem` (`arm64-asm-defs`,
+   `arm64-asm-include`, `arm64-va-builtin-loop`,
+   `arm64-{load,store}-const-lval`, `arm64-cvt-ftof-mask`,
+   `arm64-long-suffix-64bit`, `arm64-va-{start,arg}-param-decay`)
+   plus `src/arm64-asm.c`.  An empty `config.h` is needed because
+   `tcc.h:25` does `#include "config.h"`.
 
-The short-circuit failed because `tcc.c` itself uses `L`-suffixed
-constants — when the buggy seed parsed those, it produced a tcc-fixed
-whose internals had latent 32/64-bit mismatches.  The escape was to
-re-run the kaem chain so the **mes-based** `tcc_cc` (which doesn't
-have the parser bug) parses the patched `tcc.c`, producing a
-self-consistent fixed seed tcc.  See the "Resolution" section above.
+   Verified: `tcc-musl /tmp/hi.c -o /tmp/hi` produces a working
+   static binary; the va_list forwarding repro (`vc.c` — inner sees
+   `100 200 300`) passes, confirming the param-decay patches reached
+   the output binary.
+
+   The previous "blocked" segfault at 0x433c54 was almost certainly
+   caused by a missing `CONFIG_TCC_LIBPATHS` / `TCC_LIBTCC1` plus no
+   `libtcc1.a` in the link line — at link-time tcc-musl couldn't
+   resolve the soft-float helpers (`__addtf3` etc.) and the binary
+   ended up with unresolved symbols on the link path that
+   manifested as a crash on real compile/link (while `-version` /
+   `-E` / `-c` paths never touched them).
+
+5. **Self-hosting fixed point reached** against new musl.  Same
+   invocation as above, run twice:
+   - stage1 = seed tcc (mes-libc-linked) compiles `tcc.c` → 1204604 bytes,
+     sha256 `6fa0b171...`
+   - stage2 = stage1 compiles `tcc.c` → 1204604 bytes, sha256 `133f3dc5...`
+   - stage3 = stage2 compiles `tcc.c` → 1204604 bytes, sha256 `133f3dc5...`
+
+   **stage2 == stage3 byte-identical.**  stage1 vs stage2 first
+   differs at byte 511470 — the same libgcc/soft-float transition
+   seam between the mes-libc-linked seed and the musl-linked
+   self-hosted tcc that the original kaem-chain self-host saw
+   (around offset 511246).  Fixed-point criterion (stage2 == stage3)
+   is satisfied; `tcc-musl` self-hosts on musl correctly.

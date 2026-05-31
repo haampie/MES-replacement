@@ -171,7 +171,27 @@ if match ${ARCH} arm64; then
     # "memory full" on its first large allocation.
     simple-patch tccpp.c \
         ../../simple-patches/arm64-long-suffix-64bit.before ../../simple-patches/arm64-long-suffix-64bit.after
+<<<<<<< HEAD
 >>>>>>> 391ff1f (tcc-0.9.26 pass1: wire arm64-long-suffix-64bit simple-patch into pass1.kaem)
+||||||| parent of 0e2a704 (binutils-2.30: bootstrap-musl-style build via tcc-musl)
+=======
+
+    # arm64 va_list parameter decay: musl's AAPCS64 va_list is `struct[1]`
+    # (patches 16-19 in steps/musl-1.1.24/patches/).  A local `va_list ap`
+    # carries VT_ARRAY|VT_PTR; gen_va_start/gen_va_arg's gaddrof() correctly
+    # yields the array start.  But a *parameter* declared `va_list ap` has
+    # its array type adjusted to a plain pointer at declaration time
+    # (standard C), so vtop is VT_PTR (no VT_ARRAY) -- gaddrof then gives
+    # &param (the stack slot), not the va_list address.  Result: any
+    # callee that does `va_arg(ap, ...)` on a forwarded `va_list` reads
+    # garbage.  Manifests as binutils-2.30 `as-new`/`ld-new` segfaulting
+    # in libiberty `vconcat_copy` (concat.c:77).  Fix: skip gaddrof for
+    # the parameter (already-pointer) case at both sites.
+    simple-patch arm64-gen.c \
+        ../../simple-patches/arm64-va-start-param-decay.before ../../simple-patches/arm64-va-start-param-decay.after
+    simple-patch arm64-gen.c \
+        ../../simple-patches/arm64-va-arg-param-decay.before ../../simple-patches/arm64-va-arg-param-decay.after
+>>>>>>> 0e2a704 (binutils-2.30: bootstrap-musl-style build via tcc-musl)
 fi
 
 
