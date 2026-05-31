@@ -1,5 +1,6 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 7cb863af56f1ae0e828ab9b6ae5ac71f3d7976c132700208161007bf6beac856  /usr/bin/tcc-boot1
 7a780e2e2b49b7d5b0635fcc98bdaeb0bc387af95339c2dbe7a2cf9fd8f35d80  /usr/bin/tcc
 ||||||| parent of 14f8a13 (tcc-arm64: handle VT_CONST|VT_LVAL load/store)
@@ -17,6 +18,15 @@ b01a820b08f694d3c1b25f6c68ec38a9d53f79b792ec87de0d2e436e805574b7  /usr/bin/tcc
 a58194ece1c3c35e95595de4f5e1bd0f11f90d750ee17ccc24f6725d34735a2d  /usr/bin/tcc
 >>>>>>> 8da539f (tcc-arm64: mask qualifiers in gen_cvt_ftof type compares)
 0f1e3c876f0db90651ee000c054bfd1e9d648a208fd93763575c4aa1c67ed947  /usr/lib/mes/libc.a
+||||||| parent of cd442d7 (tcc-0.9.26: bump arm64 checksums for arm64-long-suffix-64bit patch; log.md: record success)
+15ecf38f2947c2c8e285a4d24cbc7a6bece4159e9af0c6d09afefeb64f8ccea2  /usr/bin/tcc-boot1
+a58194ece1c3c35e95595de4f5e1bd0f11f90d750ee17ccc24f6725d34735a2d  /usr/bin/tcc
+0f1e3c876f0db90651ee000c054bfd1e9d648a208fd93763575c4aa1c67ed947  /usr/lib/mes/libc.a
+=======
+24462bdbbe75a0fa65637da3a790943e2f37c3a72541629e3eabde51818ea95e  /usr/bin/tcc-boot1
+df774fb71ab68e8865228454730e476d8faeb55f7b9cdad0eeb5b13f78324819  /usr/bin/tcc
+c2c7648a5c5ad627526641f4ab4fd0a690f6df9f73a6645c0d4e3cd69a041885  /usr/lib/mes/libc.a
+>>>>>>> cd442d7 (tcc-0.9.26: bump arm64 checksums for arm64-long-suffix-64bit patch; log.md: record success)
 f8206bdb0d4fc8e0510dbecf54357b5c9345428357c51c2aa64cabeb7a2ef441  /usr/lib/mes/libgetopt.a
 b9a63d3bce18e3f0638d54078f5541a72fb8e5922284c3c79fd2ef79bc3b4358  /usr/lib/mes/crt1.o
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  /usr/lib/mes/crti.o

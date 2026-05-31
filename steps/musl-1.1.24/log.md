@@ -131,6 +131,40 @@ Verified: a tcc binary built with this patch in place generates
 opcode 0x9281ffe1) for `-4096UL`, exactly the same as it already does
 for `0xfffffffffffff000UL`.
 
+## Resolution: kaem rebuild + full chain
+
+Wired the new `arm64-long-suffix-64bit.{before,after}` simple-patch
+into `steps/tcc-0.9.26/pass1.kaem` (alongside the existing arm64
+patches), flipped `target_arm64/bootstrap.cfg`
+`UPDATE_CHECKSUMS=True`, and re-ran `task5_arm64.sh`.  This rebuilds
+the entire pre-tcc bootstrap chain (mes, tcc-boot0, tcc-boot1, ...) on
+top of `tcc_cc`, which doesn't have the bug, so the rebuilt
+`/usr/bin/tcc` is self-consistent with the patch.  Regenerated
+checksums copied back into the step.
+
+Then end-to-end:
+
+1. **musl** rebuilt cleanly with the new `tcc` via `build.sh` — full
+   `libc.a` + `crt*.o` install, no errors.  The regenerated
+   `__syscall_ret` now contains the correct
+   `mov x1, #0xfffffffffffff000` instead of the 32-bit truncated form.
+2. **tcc-musl** rebuilt against the new musl, runs cleanly: `tcc-musl
+   -version` works (no "memory full"), compiles a hello-world that
+   links statically against the new musl and prints `hello musl`.
+3. **Self-hosting fixed-point**: stage-2 (tcc-musl compiles tcc.c)
+   produces a 522560-byte binary that compiles further sources.
+   stage-3 (stage-2 compiles tcc.c) is **byte-identical** to stage-2.
+   stage-1↔stage-2 differs by a handful of bytes around offset
+   511246 — the expected libgcc/soft-float transition artifact
+   between the mes-libc-linked seed and the musl-linked self-hosted
+   tcc.  stage-2 == stage-3 is the correct fixed-point criterion.
+
+Status: **DONE.**  Patched seed tcc -> musl -> tcc-musl self-hosts.
+
+---
+
+(Historical: earlier attempt to short-circuit the kaem chain.)
+
 ## Verification attempt outside the kaem chain
 
 Tried to short-circuit the bootstrap by rebuilding the seed tcc
@@ -169,27 +203,11 @@ Stage-2 (using `tcc-fixed` to rebuild `tcc-fixed`) also fails on
 `pow_data.c` and produces a byte-different binary from stage-1, so
 fixed-point hasn't been reached either.
 
-## Status: needs full kaem rebuild of the seed tcc
+### What ultimately resolved it
 
-The clean way out is to re-run the existing
-`steps/tcc-0.9.26/pass1.kaem` flow with the new patch wired in, so
-`tcc_cc` (which doesn't suffer the bug) parses the patched `tcc.c`.
-That produces a self-consistent fixed seed tcc, after which `build.sh`
-should rebuild musl correctly and `tcc-musl` should self-host.
-
-Concrete next steps:
-
-1. Add a `simple-patch` invocation to `pass1.kaem` for the new
-   `arm64-long-suffix-64bit.{before,after}` files in
-   `steps/tcc-0.9.26/simple-patches/` (already saved on this branch),
-   alongside the existing arm64 patches.
-2. Re-run the tcc-0.9.26 step in the chroot so `/usr/bin/tcc` is
-   replaced.
-3. Rerun `build.sh` here with the new TCC.
-4. Rebuild `tcc-musl` against the rebuilt musl.
-5. Check self-hosting: compile tcc.c with tcc-musl, compare against
-   the binary built from the same source by the rebuilt seed tcc.
-
-Parked here — wiring the patch into pass1.kaem and re-running the
-kaem chain belongs in the `tcc-0.9.26` step's branch, not in this
-musl-notes branch.
+The short-circuit failed because `tcc.c` itself uses `L`-suffixed
+constants — when the buggy seed parsed those, it produced a tcc-fixed
+whose internals had latent 32/64-bit mismatches.  The escape was to
+re-run the kaem chain so the **mes-based** `tcc_cc` (which doesn't
+have the parser bug) parses the patched `tcc.c`, producing a
+self-consistent fixed seed tcc.  See the "Resolution" section above.
