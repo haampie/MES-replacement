@@ -251,3 +251,62 @@ musl, `tcc-musl`, and binutils on top.
    self-hosted tcc that the original kaem-chain self-host saw
    (around offset 511246).  Fixed-point criterion (stage2 == stage3)
    is satisfied; `tcc-musl` self-hosts on musl correctly.
+
+## Critical: tcc-musl is built WITHOUT `-DHAVE_FLOAT=1` → all FP constants are 0.0 (2026-06-01)
+
+The `tcc-musl` build invocation above (step 4, the `tcc -g -static -nostdlib ...`
+line) passes `-DBOOTSTRAP=1 -DHAVE_LONG_LONG=1 -DTCC_TARGET_ARM64=1` but **not**
+`-DHAVE_FLOAT=1`.  In the bootstrappable 0.9.26 fork, *all* floating-point
+handling is wrapped in `#if HAVE_FLOAT` (upstream tinycc has no such macro).  With
+the macro undefined:
+
+- `tccpp.c` parse_number: `#if HAVE_FLOAT tokc.d = strtod(token_buf, NULL); #endif`
+  — the literal's value is never computed.
+- `tccgen.c` init_putv: `#if HAVE_FLOAT *(double *)ptr = vtop->c.d; #endif` — the
+  constant bytes are never written to the data section.
+
+Net effect: **every `float`/`double` literal compiled by `tcc-musl` becomes
+`0.0`** — even `1.0`/`2.0`.  Confirmed by compiling `double x = 38.53;` and
+dumping `.data`: 8 zero bytes (correct is `a4 70 3d 0a d7 43 43 40`).  The
+aarch64 codegen is fine (`ldr d0`, `fcvtzs`, `scvtf` all correct); only the
+constant value is wrong.
+
+### This is the single root cause of the entire GCC/musl cc1 crash taxonomy
+
+`cc1` was compiled by `tcc-musl-stage3`, so every FP constant inside GCC's own
+source is `0.0`.  Everything in `bootstrap-gcc/LOG.md` and
+`bootstrap-musl-gcc/LOG.md` collapses to this one bug:
+
+- `real.c:1724` `gcc_assert(digit <= 10)` ICE in `real_to_decimal_for_mode`
+  (creduce-reduced to `a = 8 * 0.30102999566398119521; ... while(--a)`):
+  real.c's internal `log10(2)` etc. are 0, so `a = 0`, `while(--a)` runs away.
+- Bug 3 (`double f(void){return 1.0;}` crashes at -O1+): cc1 real-arithmetic on
+  zeroed constants.
+- Bug 4 / `pow(x, 2.0)` crash even at -O0: `fold_builtin_pow` compares the
+  exponent against zeroed `REAL_VALUE` constants (2.0, 0.5).
+- Bug 1 (CCP), Bug 2 (double→long double promotion), MPFR `dbl_int_bug`,
+  GMP `2^63` configure probe — same zeroed-constant origin.
+
+The many `-O0` / `-fno-tree-ccp` / stub workarounds in those logs become
+unnecessary once tcc is fixed.
+
+### Verified fix: add `-DHAVE_FLOAT=1` to the tcc-musl build
+
+Built a stage-4 tcc inside the VM = `tcc-musl-stage3` compiling
+`~/bootstrap-tcc-musl/tcc-src/tcc.c` (ONE_SOURCE, static) with **only**
+`-DHAVE_FLOAT=1` added (plus `-DTCC_VERSION='"0.9.26"'` since config.h is empty,
+and using the tcc-compatible `…/musl-new/include.tcc-bak` / `lib.tcc-bak`
+headers — the plain `include` has a va_list form tcc rejects).  Results:
+
+- `double x = 38.53;` → `.data` = `a4 70 3d 0a d7 43 43 40` (correct).
+- double→long conversions: 38.53→38, 2.5→2, 7.0→7 (stage3 gave all 0).
+- The original creduce reproduction (`real_to_decimal` + harness) prints
+  `OK: 11` and exits 0 (stage3 timed out / ran away, exit 124).
+
+**Action:** add `-DHAVE_FLOAT=1` to the `tcc-musl` build line in step 4 (and to
+whatever drives the self-hosting stages) and rebuild stage1→stage3, so the
+GCC-building compiler materializes FP constants.  No source patch needed — it is
+a pure build-flag fix.  Note the mes-libc seed tcc (chroot `rootfs/usr/bin/tcc`)
+builds float constants but mis-rounds some decimals (e.g. `38.53`→`43.3`) due to
+mes-libc's `strtod`; that is a separate, seed-only issue — musl's `strtod` is
+correct, so the musl-hosted stages are fine once `HAVE_FLOAT` is on.
