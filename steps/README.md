@@ -14,6 +14,14 @@ Each chain step has its own directory with a `log.md` (prose build log),
 | 05 | `05-gcc-4.7-stage1` | GCC 4.7.4, **C only** | tcc-musl-stage3 |
 | 06 | `06-musl-1.1.24-gcc` | **pristine** musl, zero patches (the real libc) | stage-1 GCC |
 | 07 | `07-gcc-4.7-stage2` | GCC 4.7.4, **C + C++** (final) | stage-1 GCC + pristine musl |
+| 08 | `08-gmake-4.4.1` | GNU make 4.4.1 (fifo jobserver) — *optional side-branch* | **seed tcc only** |
+
+Step **08 is an optional side-branch**, not on the GCC critical path. It depends
+only on step 01 (seed tcc 0.9.26 + mes libc) and is numbered last merely because
+it was added last — conceptually it can be built right after the seed tcc. It
+also doubles as the record of several **mes libc aarch64 bugs/gaps** found along
+the way: see `08-gmake-4.4.1/mes-libc-fixes.md` (the `opendir`/`O_DIRECTORY`
+bug, `assert`/`NDEBUG`, missing `mkfifo`/`ftruncate`/`tmpfile`, etc.).
 
 There is **no tcc 0.9.27 build** — the chain uses tcc 0.9.26 throughout (first on
 mes libc, then on musl). The leftover `tcc-0.9.27/` dir is referenced only by the

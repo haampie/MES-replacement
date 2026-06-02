@@ -1,0 +1,6 @@
+# GNU make 4.4.1
+# 4.4 is the first release with the named-pipe (fifo) jobserver
+# (--jobserver-style=fifo); 4.2.x only has the anonymous-pipe jobserver.
+https://ftp.gnu.org/gnu/make/make-4.4.1.tar.gz
+sha256  dd16fb1d67bfab79a72f5e8390735c49e3e8e70b4945a15ab1f81ddb78658fb3
+size    2348200

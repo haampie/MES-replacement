@@ -1,0 +1,25 @@
+#!/bin/sh
+# Compiler wrapper: drive the seed tcc 0.9.26 (mes libc) as a normal "cc" from
+# the host, so an ordinary ./configure && make can build GNU make against mes
+# libc.  Only the *compiler* is the seed tcc; the host sh/make/configure merely
+# orchestrate (same arrangement as the musl-1.1.24 build.sh).
+#
+# ROOTFS must point at the MES-replacement chroot tree that holds the seed tcc
+# and mes libc.  Defaults to ../../rootfs relative to this script.
+ROOTFS="${ROOTFS:-$(CDPATH= cd -- "$(dirname -- "$0")/../../rootfs" && pwd)}"
+R="$ROOTFS"
+M="$R/usr/lib/mes"
+INC="$R/usr/include/mes"
+TCC="$R/usr/bin/tcc"
+
+# Linking vs compile-only: tcc's mes target has non-standard crt/lib locations
+# (/usr/lib/mes), so on a link we spell out crt1/crti + libc + libtcc1 + crtn
+# explicitly under -nostdlib; on -c/-E/-S we just add the mes include/lib dirs.
+link=1
+for a in "$@"; do case "$a" in -c|-E|-S) link=0;; esac; done
+if [ "$link" -eq 1 ]; then
+  exec "$TCC" -I"$INC" -L"$M" -B"$M/tcc" -nostdlib \
+       "$M/crt1.o" "$M/crti.o" "$@" -lc "$M/tcc/libtcc1.a" "$M/crtn.o"
+else
+  exec "$TCC" -I"$INC" -L"$M" -B"$M/tcc" "$@"
+fi
