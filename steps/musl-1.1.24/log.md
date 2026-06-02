@@ -174,7 +174,7 @@ Forwarded `va_arg` then reads garbage.
 
 Fix lives in `steps/tcc-0.9.26/simple-patches/arm64-va-{start,arg}-param-decay.*`
 and is wired into `pass1.kaem`.  See
-`steps/binutils-2.30/log.md` "Issue 4" for full diagnosis + repro
+`steps/04-binutils-2.30/log.md` "Issue 4" for full diagnosis + repro
 (crash was `as-new` segfaulting in libiberty `vconcat_copy`).
 
 Requires the same procedure as the long-suffix fix to roll out:

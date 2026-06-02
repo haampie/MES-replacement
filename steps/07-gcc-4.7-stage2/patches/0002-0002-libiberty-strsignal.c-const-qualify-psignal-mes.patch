@@ -1,0 +1,26 @@
+From dc111d2955ebebc5660ade2b6601989b0a6357ee Mon Sep 17 00:00:00 2001
+From: Harmen Stoppels <harmen@stoppels.ch>
+Date: Tue, 2 Jun 2026 07:31:39 +0200
+Subject: [PATCH] 0002: libiberty/strsignal.c const-qualify psignal message arg
+
+Match musl's psignal prototype (const char *).
+---
+ libiberty/strsignal.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/libiberty/strsignal.c b/libiberty/strsignal.c
+index 666b1b4f1..2f6070230 100644
+--- a/libiberty/strsignal.c
++++ b/libiberty/strsignal.c
+@@ -551,7 +551,7 @@ followed by a newline.
+ #ifndef HAVE_PSIGNAL
+ 
+ void
+-psignal (int signo, char *message)
++psignal (int signo, const char *message)
+ {
+   if (signal_names == NULL)
+     {
+-- 
+2.43.0
+
