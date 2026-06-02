@@ -1,5 +1,11 @@
 # tcc-on-musl bootstrap log
 
+> **Scope note.** This file holds the detailed forensics for *both* step 02
+> (scaffold musl, built by the seed tcc) *and* step 03 (tcc 0.9.26 rebuilt on
+> musl → `tcc-musl-stage3`). The curated step-03 summary, incl. the HAVE_FLOAT
+> root cause, lives in `../03-tcc-musl/log.md`; the gdb bisections below are the
+> long-form backing for it.
+
 Running notes on building tcc 0.9.26 against the new aarch64 musl libc
 (see `build.sh` + `patches/`) and verifying self-hosting.
 
