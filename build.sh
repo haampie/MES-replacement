@@ -21,6 +21,7 @@
 set -ex
 
 ARCH="$1"
+SUDO=$(command -v sudo)
 # ARCH is the mescc-tools/M2libc/answers arch name AND the chroot ${ARCH} token
 # (amd64, aarch64) - kept identical so the step scripts' single ${ARCH} resolves
 # everywhere. Only the stage0-posix/bootstrap-seeds directory uses an uppercase
@@ -104,7 +105,9 @@ sed -i 's/^#define MAX_ARRAY .*/#define MAX_ARRAY 4096/' rootfs/mescc-tools/Kaem
 # access() instead of slurping each candidate binary in find_executable, and
 # trim the per-token MAX_STRING zeroing in list_to_array. No produced artifact
 # changes; this only speeds up kaem's own per-command work.
-patch -p1 -d rootfs/mescc-tools < target/kaem-perf.patch
+cd rootfs/mescc-tools
+patch -p1 < ../../target/kaem-perf.patch
+cd -
 
 # Checksum file that stage0-posix's kaem.run verifies after building tools
 cp -f stage0-posix/${ARCH}.answers rootfs/
@@ -193,16 +196,20 @@ case "$RUNNER" in
         # Mirror bwrap's `--dev /dev` with a minimal device set, then remove it:
         # the nodes are root-owned, so leaving them would make the next non-root
         # `rm -rf rootfs` choke.
-        sudo mkdir -p rootfs/dev
-        sudo mknod -m 666 rootfs/dev/null    c 1 3
-        sudo mknod -m 666 rootfs/dev/zero    c 1 5
-        sudo mknod -m 666 rootfs/dev/full    c 1 7
-        sudo mknod -m 666 rootfs/dev/random  c 1 8
-        sudo mknod -m 666 rootfs/dev/urandom c 1 9
-        sudo mknod -m 666 rootfs/dev/tty     c 5 0
-        trap 'sudo rm -rf rootfs/dev' EXIT
-        sudo chroot --userspec=$(id -u):$(id -g) rootfs "$SEED" kaem.${ARCH}
-        sudo rm -rf rootfs/dev
+        ${SUDO} mkdir -p rootfs/dev
+        ${SUDO} mknod -m 666 rootfs/dev/null    c 1 3
+        ${SUDO} mknod -m 666 rootfs/dev/zero    c 1 5
+        ${SUDO} mknod -m 666 rootfs/dev/full    c 1 7
+        ${SUDO} mknod -m 666 rootfs/dev/random  c 1 8
+        ${SUDO} mknod -m 666 rootfs/dev/urandom c 1 9
+        ${SUDO} mknod -m 666 rootfs/dev/tty     c 5 0
+        trap "${SUDO} rm -rf rootfs/dev" EXIT
+        if [ $(${SUDO} chroot --help | grep "\-\-userspec") ]; then
+            ${SUDO} chroot --userspec=$(id -u):$(id -g) rootfs "$SEED" kaem.${ARCH}
+        else
+            ${SUDO} chroot rootfs "$SEED" kaem.${ARCH}
+        fi
+        ${SUDO} rm -rf rootfs/dev
         trap - EXIT
         ;;
     *)      echo "unknown RUNNER: $RUNNER (use bwrap or chroot)" >&2; exit 1 ;;
